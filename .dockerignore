@@ -1,0 +1,8 @@
+.git
+**/node_modules
+**/.next
+.venv
+data
+weights
+**/__pycache__
+apps/web/test-results

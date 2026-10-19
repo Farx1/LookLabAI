@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@source "../../../packages/ui/src";
+
+@theme {
+  --color-cream: #f6efe4;
+  --color-paper: #fdfaf5;
+  --color-sand: #e9dfd0;
+  --color-line: #e4d8c6;
+  --color-chocolate: #3b241c;
+  --color-muted: #7d6a5f;
+  --color-burgundy: #7b1e30;
+  --color-blush: #f1ddd6;
+  --font-serif: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  background: var(--color-cream);
+  color: var(--color-chocolate);
+  font-family: var(--font-sans);
+}
+.eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

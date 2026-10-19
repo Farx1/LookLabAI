@@ -1,0 +1,26 @@
+{
+  "what": "FASHN VTON v1.5 TryOnModel, random weights, one CFG sampling step (cond+uncond)",
+  "device": "cpu",
+  "dtype": "float32",
+  "torch": "2.14.1+cu130",
+  "torch_threads": 4,
+  "cpu": "x86_64",
+  "cpu_count": 4,
+  "parameters": 971813808,
+  "input_shape_hw": [
+    864,
+    576
+  ],
+  "model_build_seconds": 19.44,
+  "step_seconds": [
+    113.41,
+    96.73,
+    99.02
+  ],
+  "best_step_seconds": 96.73,
+  "extrapolated_30_steps_seconds": 2901.8,
+  "extrapolated_20_steps_seconds": 1934.6,
+  "peak_rss_mb": 6142.0,
+  "excludes": "DWPose (x2) and human-parser preprocessing; image decode/encode",
+  "measured_at": "2026-10-19T19:09:52Z"
+}

@@ -1,0 +1,31 @@
+# LookLab AI routing policy. Validated at startup against implemented providers
+# (services/api/looklab_api/config.py). Unknown names are a startup error.
+ai:
+  default_policy: open_source_first
+
+  image_analysis:
+    primary: cv_basic            # deterministic colors/pattern, always on, CPU
+    model: local_qwen3_vl        # Qwen3-VL-2B via local Ollama (optional)
+    fallback: local_florence2    # Florence-2-base via transformers (optional)
+    auto_run_model: false        # true = run the VLM on every upload in the background
+
+  outfit_recommendation:
+    primary: deterministic_hybrid
+    llm_explanations: none       # "ollama" to let a small local LLM phrase replies
+    ollama_text_model: qwen3:1.7b
+
+  virtual_tryon:
+    primary: local_fashn         # FASHN VTON v1.5 on a local CUDA GPU
+    secondary: remote_fashn      # same model on your own remote GPU (billed GPU time)
+    paid_fallback: disabled      # never used automatically
+    enabled_paid_providers: []   # e.g. [remote_fashn, fashn_api, openai_image_edit]
+    allow_mock: true             # labelled mock output for development
+
+  creative_editing:
+    enabled: false               # Qwen-Image-Edit needs a large GPU; not validated yet
+    primary: local_qwen_image_edit
+    paid_fallback: disabled
+
+  spending:
+    monthly_limit_usd: 0         # hard cap across all paid providers
+    require_explicit_approval: true

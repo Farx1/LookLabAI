@@ -1,0 +1,38 @@
+[project]
+name = "looklab-workspace"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["looklab-api", "looklab-ml"]
+
+[tool.uv.workspace]
+members = ["ml", "services/api"]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.uv.sources]
+looklab-ml = { workspace = true }
+looklab-api = { workspace = true }
+
+[tool.ruff]
+line-length = 140
+target-version = "py311"
+extend-exclude = ["apps", "node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B"]
+ignore = ["E501", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning:fastapi.testclient", "ignore:Using `httpx` with `starlette.testclient`"]
+markers = [
+  "gpu: requires a CUDA GPU and FASHN VTON weights",
+  "network: requires outbound network access",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["looklab_ml", "looklab_api"]

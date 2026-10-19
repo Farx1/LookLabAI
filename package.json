@@ -1,0 +1,12 @@
+{
+  "name": "looklab-ai",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "pnpm --filter @looklab/web dev",
+    "build": "pnpm --filter @looklab/web build",
+    "typecheck": "pnpm -r typecheck",
+    "gen:types": "uv run python scripts/dump_openapi.py packages/shared-types/openapi.json && pnpm --filter @looklab/shared-types gen",
+    "test:e2e": "pnpm --filter @looklab/web test:e2e"
+  }
+}

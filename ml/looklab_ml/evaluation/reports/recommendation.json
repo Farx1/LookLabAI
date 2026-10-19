@@ -1,0 +1,123 @@
+{
+  "benchmark": "looklab-recommendation-v1",
+  "platform": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39",
+  "python": "3.13.16",
+  "measured_at": "2026-10-19T19:23:43Z",
+  "recommendation": {
+    "wardrobe_size": 20,
+    "scenarios": [
+      {
+        "prompt": "Find 15 outfits for a romantic anniversary dinner. I prefer loose-fitting, comfortable clothes, neutral colors, Korean-inspired fashion and a budget of \u20ac100.",
+        "requested": 15,
+        "returned": 15,
+        "hard_constraint_violations": 0,
+        "violation_details": [],
+        "mean_pairwise_jaccard_distance": 0.837,
+        "unique_garments_used": 17,
+        "preferred_color_share": 0.926,
+        "mean_score": 0.857,
+        "notes": [],
+        "latency_ms": 82.0
+      },
+      {
+        "prompt": "Create 10 looks under \u20ac80.",
+        "requested": 10,
+        "returned": 10,
+        "hard_constraint_violations": 0,
+        "violation_details": [],
+        "mean_pairwise_jaccard_distance": 0.908,
+        "unique_garments_used": 18,
+        "preferred_color_share": null,
+        "mean_score": 0.787,
+        "notes": [],
+        "latency_ms": 69.7
+      },
+      {
+        "prompt": "10 outfits for work, no black",
+        "requested": 10,
+        "returned": 10,
+        "hard_constraint_violations": 0,
+        "violation_details": [],
+        "mean_pairwise_jaccard_distance": 0.75,
+        "unique_garments_used": 14,
+        "preferred_color_share": null,
+        "mean_score": 0.854,
+        "notes": [],
+        "latency_ms": 26.3
+      },
+      {
+        "prompt": "Generate a Korean-inspired outfit with a wide skirt.",
+        "requested": 1,
+        "returned": 1,
+        "hard_constraint_violations": 0,
+        "violation_details": [],
+        "mean_pairwise_jaccard_distance": null,
+        "unique_garments_used": 3,
+        "preferred_color_share": null,
+        "mean_score": 0.889,
+        "notes": [],
+        "latency_ms": 24.8
+      },
+      {
+        "prompt": "8 casual summer outfits using only clothes I own",
+        "requested": 8,
+        "returned": 8,
+        "hard_constraint_violations": 0,
+        "violation_details": [],
+        "mean_pairwise_jaccard_distance": 0.851,
+        "unique_garments_used": 15,
+        "preferred_color_share": null,
+        "mean_score": 0.871,
+        "notes": [],
+        "latency_ms": 28.5
+      },
+      {
+        "prompt": "5 elegant winter outfits for a party",
+        "requested": 5,
+        "returned": 5,
+        "hard_constraint_violations": 0,
+        "violation_details": [],
+        "mean_pairwise_jaccard_distance": 0.818,
+        "unique_garments_used": 12,
+        "preferred_color_share": null,
+        "mean_score": 0.853,
+        "notes": [],
+        "latency_ms": 26.8
+      },
+      {
+        "prompt": "12 outfits with a dress",
+        "requested": 12,
+        "returned": 12,
+        "hard_constraint_violations": 0,
+        "violation_details": [],
+        "mean_pairwise_jaccard_distance": 0.812,
+        "unique_garments_used": 9,
+        "preferred_color_share": null,
+        "mean_score": 0.759,
+        "notes": [],
+        "latency_ms": 10.7
+      }
+    ],
+    "summary": {
+      "outfits_checked": 61,
+      "constraint_satisfaction_rate": 1.0,
+      "median_latency_ms": 26.8
+    },
+    "not_measured": "human preference ratings (needs a user study; see docs/EVALUATION.md)"
+  },
+  "color_naming": {
+    "images": 231,
+    "exact_accuracy": 0.9697,
+    "neutral_vs_chromatic_accuracy": 1.0,
+    "sample_misses": [
+      "ivory->white (top)",
+      "ivory->white (trousers)",
+      "ivory->white (dress)",
+      "ivory->white (skirt)",
+      "ivory->white (jacket)",
+      "ivory->white (shoes)",
+      "ivory->white (bag)"
+    ],
+    "caveat": "synthetic flat colors on a plain background; real photos with lighting variation will score lower"
+  }
+}

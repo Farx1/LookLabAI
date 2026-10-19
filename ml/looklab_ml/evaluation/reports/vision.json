@@ -1,0 +1,33 @@
+{
+  "dataset": "synthetic DEMO_WARDROBE (20)",
+  "measured_at": "2026-10-19T19:26:44Z",
+  "results": [
+    {
+      "analyzer": "cv_basic",
+      "images": 20,
+      "accuracy_when_answered": {
+        "category": null,
+        "color": 0.95,
+        "pattern": 1.0
+      },
+      "unknown_rate": {
+        "category": 1.0,
+        "color": 0.0,
+        "pattern": 0.15
+      },
+      "latency_s": {
+        "median": 0.029,
+        "max": 0.082
+      },
+      "peak_rss_mb": 78
+    },
+    {
+      "analyzer": "local_qwen3_vl",
+      "skipped": "ollama not reachable at http://127.0.0.1:11434: ConnectError"
+    },
+    {
+      "analyzer": "local_florence2",
+      "skipped": "torch/transformers not installed (pip install '.[vision-models]')"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+[project]
+name = "looklab-api"
+version = "0.1.0"
+description = "LookLab AI FastAPI backend"
+requires-python = ">=3.11"
+dependencies = [
+  "looklab-ml",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "sqlalchemy>=2.0.30",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "python-multipart>=0.0.9",
+  "pyyaml>=6",
+  "httpx>=0.27",
+  "pillow>=10.3",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.1"]
+s3 = ["boto3>=1.34"]
+heic = ["pillow-heif>=0.16"]
+
+[project.scripts]
+looklab-api = "looklab_api.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["looklab_api"]

@@ -1,0 +1,48 @@
+# Local, single-user LookLab stack. No GPU and no API key required.
+#   docker compose up --build        -> http://localhost:3000
+# Optional profiles:
+#   docker compose --profile ollama up      (local Qwen3-VL garment analysis)
+#   docker compose --profile gpu up         (FASHN VTON worker on a local NVIDIA GPU)
+services:
+  api:
+    build: { context: ., dockerfile: infrastructure/docker/api.Dockerfile }
+    environment:
+      LOOKLAB_OLLAMA_URL: http://ollama:11434
+      LOOKLAB_CORS_ORIGINS: '["http://localhost:3000"]'
+      LOOKLAB_REMOTE_GPU_URL: ${LOOKLAB_REMOTE_GPU_URL:-}
+      LOOKLAB_REMOTE_GPU_TOKEN: ${LOOKLAB_REMOTE_GPU_TOKEN:-}
+    volumes:
+      - looklab-data:/data
+    ports: ["127.0.0.1:8000:8000"]
+    restart: unless-stopped
+
+  web:
+    build: { context: ., dockerfile: infrastructure/docker/web.Dockerfile }
+    environment:
+      LOOKLAB_API_URL: http://api:8000
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [api]
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.12.6
+    profiles: [ollama]
+    volumes: [ollama:/root/.ollama]
+    # first run: docker compose exec ollama ollama pull qwen3-vl:2b
+
+  gpu-worker:
+    build: { context: ., dockerfile: infrastructure/gpu-worker/Dockerfile }
+    profiles: [gpu]
+    environment:
+      LOOKLAB_WORKER_TOKEN: ${LOOKLAB_WORKER_TOKEN:-}  # worker refuses requests until set
+    volumes: [looklab-weights:/weights]
+    ports: ["127.0.0.1:8080:8080"]
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]
+
+volumes:
+  looklab-data:
+  looklab-weights:
+  ollama:
