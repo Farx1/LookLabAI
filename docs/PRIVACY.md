@@ -9,6 +9,7 @@
 | Consent | person photos require confirming the subject is you or a consenting person; stored with the photo |
 | External transfer | off by default. Remote GPU and paid APIs require the *external processing* setting **and** per-request approval |
 | Deletion | delete a photo → all try-on images made from it are deleted (default); delete-all endpoint; JSON export |
+| Outfit analysis | the photo is stored only while its job runs, then deleted (also when the job fails or is cancelled; a sweep removes the copy of a job cancelled while queued). The kept result holds boxes, colors and wardrobe matches, never pixels. `DELETE /api/analyze/{id}` removes the result. A photo with a person requires the same consent as a person photo. Analysis is local (Ollama), nothing leaves the machine |
 | Retention | optional auto-delete of unsaved try-ons and of photos after N days |
 | No body/face editing | prompts and the try-on model change garments only; the UI states this. Generative edits are labelled as such |
 | Logging | the GPU worker never writes or logs images; the API logs no image content |

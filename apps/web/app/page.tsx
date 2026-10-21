@@ -98,7 +98,7 @@ export default function Dashboard() {
             {saved.slice(0, 8).map((o) => (
               <Link key={o.id} href="/saved" className="w-48 shrink-0 snap-start overflow-hidden rounded-2xl border border-line bg-paper">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={o.collage_url} alt={o.title} className="aspect-[4/5] w-full object-cover" loading="lazy" />
+                {o.collage_url ? <img src={o.collage_url} alt={o.title} className="aspect-[4/5] w-full object-cover" loading="lazy" /> : <div className="flex aspect-[4/5] w-full items-center justify-center bg-cream p-3 text-center text-xs text-muted">Pieces deleted</div>}
                 <p className="line-clamp-1 p-3 text-sm capitalize">{o.title}</p>
               </Link>
             ))}

@@ -57,6 +57,73 @@ Conclusion: CPU-only machines are a first-class development mode for everything 
 * **Derived**: bf16 weights are ~1.9 GB (972 M × 2 bytes). Activations for ~7 k tokens × 24 blocks × batch 2 come on top. We expect a **12–16 GB consumer GPU (Ampere or newer)** to be sufficient, but this is an *expectation, not a measurement*.
 * **To measure**: `uv run pytest -m gpu -s` (tests/test_gpu.py) prints load time, inference time and `torch.cuda.max_memory_allocated()` on real hardware. Every production run also records `gpu_memory_peak_mb` in the `inference_runs` table (Settings → Costs & performance).
 
+### 4.1 Measured run: RTX 3070 Laptop GPU, 8 GB (2026-10-19)
+
+The model runs on an 8 GB laptop GPU. The 12–16 GB expectation above is too high for parser-free, single-image inference.
+
+| Item | Value |
+|---|---|
+| Machine | Windows 11, RTX 3070 Laptop GPU 8 GB VRAM (driver 581.83), 31 GB RAM |
+| Software | torch 2.6.0+cu124, onnxruntime-gpu 1.31.0, `fashn-vton-1.5@7c0f10a` |
+| Mode | `parser_free`, `flat-lay`, category `tops`, synthetic test images (`draw_person`, `draw_garment`) |
+| Precision | bf16 |
+| Resolution | 864×576 (H×W). Output image 576×864 (W×H). |
+| Steps | 30 (CFG, 2 forward passes per step) |
+| Result | Success, no out-of-memory error. Test passed. |
+| Model load | **14.7 s** (TryOnModel and DWPose) |
+| Inference per image | **45.2 s** (sampling about 42.9 s, about 1.43 s per step) |
+| Peak VRAM, `torch.cuda.max_memory_allocated()` | **2,782 MiB** |
+| Peak VRAM, `nvidia-smi` (whole GPU, 500 ms sampling) | **6,184 MiB** of 8,192 MiB. Idle baseline before the run: 720 MiB. Includes the PyTorch cache and the CUDA context. |
+
+Command:
+
+```bash
+uv run pytest -m gpu -s tests/test_gpu.py
+```
+
+Observed limit: DWPose ran on CPU. The onnxruntime-gpu 1.31.0 CUDA provider failed to load because `cublasLt64_13.dll` (CUDA 13) is missing. ONNX Runtime fell back to CPU without error. The DWPose time is included in the inference time above.
+
+### 4.2 Layered try-on: measures (2026-10-20)
+
+Goal: change only the garment. Everything else (background, face, body, scarf, bag, headband) must stay identical.
+
+Findings from the spike, then confirmed in the product code:
+
+- Without a human parser, FASHN keeps the silhouette of the old garment. A label map built from Qwen3-VL boxes and SAM2 masks fixes the length.
+- FASHN returns 576x768 for a 1536x2048 input and redraws the background. The result is therefore pasted back at full resolution inside a small feathered mask. Outside it, pixels are the original.
+- Qwen3-VL 2B on Ollama 0.13 is a thinking model and ignores `think=false`. Prefilling an empty think block plus the start of the JSON answer, and stopping at `</think>`, fixes it. The old analyzer call timed out at 120 s on 2 of 3 garment photos. With the fix it answered 4 of 4 in 1.5 s each.
+
+Setup: RTX 3070 Laptop 8 GB, one real photo (1536x2048, market scene, puffer jacket, scarf, headband, bag), `local_fashn` provider, 30 steps, guidance 1.5, SAM2.1 small, `qwen3-vl:2b`. Stage times are wall clock and include a FASHN reload (about 10 s) because FASHN must leave the GPU while Qwen runs.
+
+| Garment | Qwen | SAM2 (plan + result) | FASHN | Paste back | Total | Peak VRAM (nvidia-smi, whole GPU) | Changed area |
+|---|---|---|---|---|---|---|---|
+| Black biker jacket | 7.9 s | 5.4 s | 46.6 s (+10.3 s load) | 0.4 s | 73.7 s | 5,717 MiB | 21.2 % |
+| Burgundy blazer | 7.8 s | 2.2 s | 46.7 s (+9.3 s load) | 0.3 s | 67.5 s | 5,759 MiB | 20.2 % |
+
+- Pixels outside the mask differ from the input by at most 0 (checked in the provider and again on the saved PNG: 21.2 % and 20.2 % of pixels differ, matching the mask).
+- Scarf, headband, hair above the chin, face, bag strap and trousers are preserved. Result checked by eye on the board.
+- Through the API job path (own instance, copy of the data), the biker jacket took 73.3 s and returned `fidelity_mode: layered`. A top then the blazer took 142 s, but the second step is poor: see limits.
+- Both jackets are shorter than the puffer, so the bare area is imagined by FASHN (`uncovered_ratio` 0.16 and 0.45, threshold 0.10, `uncovered_area: true`).
+
+Known limits:
+
+- Hair that falls over the old jacket is repainted (SAM2 cannot separate it from a black jacket with Qwen's rough boxes).
+- The area the old garment covered and the new one does not (here, the puffer sleeve over the shelf) is imagined and can show smudges. A bag hanging at the side was partly ghosted.
+- The belt of the biker jacket is lost.
+- An outerwear step needs an outer layer worn in the photo. After a top step there is none, so the job falls back to the plain mode for that step. Top then outerwear in one job gave a poor result in the layered mode before this rule was added.
+- One photo, two garments: not a benchmark. Hair, thin straps and dark-on-dark outfits need more samples.
+
+### 4.3 Layers, background artefacts, server stalls (2026-10-20, 1 photo)
+
+Measured on one photo (market stall, black puffer, scarf, chain bag), RTX 3070 Laptop 8 GB.
+
+* Top then outerwear (white sweater, then burgundy blazer). The outerwear step keeps a centre strip of the fresh top unmasked (label `jewelry`, an identity label FASHN leaves alone), so the open blazer shows the top. Measured variants on one photo: no strip, the sweater turns into a red crop top; strip over the full height, the blazer stretches to the knees with white patches at the hem; strip over the upper 60% of the layer height (kept), sweater visible and blazer hip length. Three live runs through the API: 2/3 clean (run 1 has a dark stain on the sweater and a longer blazer). Limits: the strip has a fixed width (18% of the layer), a closed jacket loses its centre; the blazer length still follows FASHN, not the product photo.
+* Background artefacts left of the body: FASHN invents a blurred background where the old puffer overhung the body (inside the mask, `outside_mask_max_diff=0`). `finish` cuts the person out of the FASHN result with SAM2 and inpaints (OpenCV Telea) the repaint area that is not the person. Halo variants, ring of 40 px around the person (Laplacian std vs the original, closer to 1 is better): no fill 0.86; fill with 9 px margin and 15 px edit dilation 0.82 (dark halo around the arms); 3 px edit dilation, 5 px margin 0.93 (kept); nearest-background fill 0.92 (blurry smear, same dark remnant). Single perfecto, 3 live runs: 3/3 clean, 72 to 84 s (multi 140 to 147 s). Not fixed: a dark remnant under the arm where the old puffer hung (SAM2 counts it as person); a patch-based inpaint would be the next step.
+* Job result now carries `fidelity_steps` (one entry per step); the aggregate fields are unchanged.
+* Event loop: PNG decode/encode and housekeeping moved to threads. With asyncio debug on, no callback over 0.1 s remains. `/api/health` polled every 0.5 s during a job: max 0.88 s (multi, before) vs 1.12 s (after), 1.09 s (single plus analysis, before) vs 0.89 s (after). No improvement measured; a residual stall of about 1 s at stage changes comes from a thread, not the loop. No `Server disconnected` reproduced (40 polls at 5 s on a kept-alive connection, 0 errors). Cause of the reported disconnects: not found.
+* VRAM: FASHN loaded 5.6 GB, Qwen 3.4 GB, total above 8.2 GB. FASHN cannot stay loaded while Qwen runs, so it is still unloaded and reloaded (about 10 s) per step.
+* Latency (API, includes Qwen and SAM2): single 85 s, multi 140 s (before: 82 s and 140 s; the 248 s seen earlier included model cold start).
+
 ## 5. Cheapest viable real-inference paths
 
 | Path | Cost model | Expected cost per image | Notes |

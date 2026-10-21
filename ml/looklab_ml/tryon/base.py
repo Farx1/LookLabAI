@@ -20,10 +20,12 @@ class TryOnRequest:
     seed: int = 42
     num_samples: int = 1
     output_path: str = ""
+    garment_kind: str = ""  # wardrobe category (outerwear, top, bottom, dress...): picks the layer to replace
+    over_top: bool = False  # a top was dressed in an earlier step of the same job: an outerwear step keeps it visible under an open jacket
 
     def params(self) -> dict:
         d = asdict(self)
-        for k in ("person_image_path", "garment_image_path", "output_path"):
+        for k in ("person_image_path", "garment_image_path", "output_path", "garment_kind", "over_top"):
             d.pop(k)
         return d
 
@@ -41,6 +43,11 @@ class TryOnResult:
     actual_cost_usd: float | None = None
     is_mock: bool = False
     notes: list[str] = field(default_factory=list)
+    fidelity_mode: str = ""  # "layered" | "segfree" (local_fashn only)
+    fidelity_reason: str = ""
+    uncovered_area: bool = False  # new outer layer is shorter than the old one
+    stage_seconds: dict = field(default_factory=dict)
+    edit_fraction: float | None = None  # share of the image that differs from the input
 
 
 @dataclass

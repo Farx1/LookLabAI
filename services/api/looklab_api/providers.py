@@ -14,7 +14,9 @@ from looklab_ml.tryon import (
     RemoteFashnProvider,
     RemoteGpuConfig,
 )
+from looklab_ml.tryon.layers import LayerPlanner
 from looklab_ml.vision import build_analyzer
+from looklab_ml.vision.outfit import analyze_outfit
 
 from .config import PAID_TRYON_PROVIDERS, TRYON_PROVIDERS, AIPolicy, Settings
 
@@ -35,8 +37,10 @@ class ProviderRegistry:
             idle_unload_seconds=settings.fashn_idle_unload_seconds,
             allow_cpu=settings.fashn_allow_cpu,
         )
+        planner = LayerPlanner(settings.ollama_url, settings.ollama_vision_model, str(settings.sam2_weights))
+        self.outfit_analyze = lambda image, person: analyze_outfit(planner, image, person)  # tests swap it for a fake
         self.tryon = {
-            "local_fashn": LocalFashnProvider(self.fashn_runtime),
+            "local_fashn": LocalFashnProvider(self.fashn_runtime, planner),
             "remote_fashn": RemoteFashnProvider(
                 RemoteGpuConfig(
                     url=settings.remote_gpu_url,
@@ -85,6 +89,10 @@ class ProviderRegistry:
                 }
             )
         return out
+
+    def layer_status(self) -> dict:
+        """Qwen3-VL (Ollama) and SAM2 availability for the layered try-on mode."""
+        return self.tryon["local_fashn"].layer_status() if "local_fashn" in self.tryon else {}
 
     def _role(self, name: str) -> str:
         vt = self.policy.virtual_tryon

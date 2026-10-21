@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BookOpen, Heart, House, Menu, MessageCircle, Settings, Shirt, Sparkles, WandSparkles, X } from "lucide-react";
+import { BookOpen, Heart, House, Menu, MessageCircle, ScanSearch, Settings, Shirt, Sparkles, WandSparkles, X } from "lucide-react";
 import { cn } from "@looklab/ui";
 
 const NAV = [
@@ -11,6 +11,7 @@ const NAV = [
   { href: "/outfits", label: "Outfit Generator", short: "Outfits", icon: Sparkles, mobile: true },
   { href: "/studio", label: "Try-On Studio", short: "Try-On", icon: WandSparkles, mobile: true },
   { href: "/stylist", label: "AI Stylist", short: "Stylist", icon: MessageCircle, mobile: true },
+  { href: "/analyze", label: "Analyze an Outfit", icon: ScanSearch },
   { href: "/lookbook", label: "Lookbook", icon: BookOpen },
   { href: "/saved", label: "Saved Outfits", icon: Heart },
   { href: "/settings", label: "Settings & Privacy", icon: Settings },

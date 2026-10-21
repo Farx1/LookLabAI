@@ -1,0 +1,971 @@
+{
+ "season": "FW2026 (automne-hiver 2026-2027)",
+ "date": "2026-10-20",
+ "trends": [
+  {
+   "id": "skirt-suit-cinched",
+   "nom": "Tailleur jupe et taille marquée",
+   "description": "Le tailleur jupe revient allégé, avec taille cintrée, péplum et jupe crayon ou trapèze.",
+   "signaux": {
+    "colors": [
+     "grey",
+     "black",
+     "charcoal"
+    ],
+    "color_pairs": [
+     [
+      "grey",
+      "black"
+     ]
+    ],
+    "subcategories": [
+     "blazer",
+     "skirt",
+     "blouse",
+     "belt",
+     "heels"
+    ],
+    "styles": [
+     "business",
+     "elegant",
+     "classic"
+    ],
+    "patterns": [
+     "solid",
+     "striped",
+     "checked"
+    ],
+    "fits": [
+     "slim",
+     "regular"
+    ],
+    "layering": "blazer assorti à la jupe ; ceinture sur blazer pour marquer la taille",
+    "formality": [
+     3,
+     4
+    ]
+   },
+   "sources": [
+    "https://coveteur.com/fall-fashion-trends-2026",
+    "https://www.bustle.com/style/fall-2026-fashion-trends",
+    "https://numero.com/?p=874167",
+    "https://blog.trendalytics.co/womenswear-fall/winter-2026-trend-recap",
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "relaxed-grey-suiting",
+   "nom": "Costume ample gris",
+   "description": "Costume pantalon ample et fluide, le gris devenant le neutre dominant devant le marron.",
+   "signaux": {
+    "colors": [
+     "grey",
+     "charcoal",
+     "light grey"
+    ],
+    "color_pairs": [
+     [
+      "grey",
+      "white"
+     ],
+     [
+      "charcoal",
+      "light grey"
+     ]
+    ],
+    "subcategories": [
+     "blazer",
+     "trousers",
+     "knit",
+     "top",
+     "loafers"
+    ],
+    "styles": [
+     "business",
+     "minimalist"
+    ],
+    "patterns": [
+     "solid",
+     "striped"
+    ],
+    "fits": [
+     "relaxed",
+     "oversized"
+    ],
+    "layering": "blazer croisé sur haut drapé ou col V profond",
+    "formality": [
+     3,
+     4
+    ]
+   },
+   "sources": [
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html",
+    "https://www.bustle.com/style/fall-2026-fashion-trends",
+    "https://blog.trendalytics.co/womenswear-fall/winter-2026-trend-recap"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "dark-romance-lace",
+   "nom": "Romantisme sombre et néo-goth",
+   "description": "Dentelle, corsets, cols montants et fleurs sur fond sombre dans une palette noire et bijou.",
+   "signaux": {
+    "colors": [
+     "black",
+     "burgundy",
+     "purple"
+    ],
+    "color_pairs": [
+     [
+      "black",
+      "burgundy"
+     ],
+     [
+      "black",
+      "purple"
+     ]
+    ],
+    "subcategories": [
+     "dress",
+     "camisole",
+     "blouse",
+     "skirt",
+     "boots"
+    ],
+    "styles": [
+     "romantic",
+     "edgy",
+     "vintage"
+    ],
+    "patterns": [
+     "solid",
+     "floral"
+    ],
+    "fits": [
+     "slim"
+    ],
+    "layering": null,
+    "formality": [
+     3,
+     5
+    ]
+   },
+   "sources": [
+    "https://coveteur.com/fall-fashion-trends-2026",
+    "https://www.bustle.com/style/fall-2026-fashion-trends",
+    "https://numero.com/?p=874167",
+    "https://blog.trendalytics.co/womenswear-fall/winter-2026-trend-recap",
+    "https://trendalytics.co/insights/fall-winter-2026-fashion-trends-colors-prints-fabrics",
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "checks-tartan",
+   "nom": "Carreaux et tartan",
+   "description": "Tartan, vichy et prince-de-Galles, souvent mélangés, sur manteaux, jupes, chemises et robes.",
+   "signaux": {
+    "colors": [
+     "brown",
+     "khaki",
+     "burgundy",
+     "navy"
+    ],
+    "color_pairs": [],
+    "subcategories": [
+     "coat",
+     "skirt",
+     "shirt",
+     "dress"
+    ],
+    "styles": [
+     "classic",
+     "preppy",
+     "vintage"
+    ],
+    "patterns": [
+     "checked"
+    ],
+    "fits": [
+     "regular",
+     "oversized"
+    ],
+    "layering": "plusieurs carreaux différents superposés dans une même tenue",
+    "formality": [
+     2,
+     4
+    ]
+   },
+   "sources": [
+    "https://coveteur.com/fall-fashion-trends-2026",
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html",
+    "https://numero.com/?p=874167",
+    "https://fashionunited.fr/actualite/mode/tendances-ce-qui-va-cartonner-en-boutiques-pour-lautomne-hiver-2026/2026080442582",
+    "https://trendalytics.co/insights/fall-winter-2026-fashion-trends-colors-prints-fabrics"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "faux-fur-texture",
+   "nom": "Fausse fourrure et matières texturées",
+   "description": "Manteaux volumineux en fausse fourrure, shearling, bouclette et mailles au toucher doudou.",
+   "signaux": {
+    "colors": [
+     "brown",
+     "cream",
+     "camel",
+     "chocolate"
+    ],
+    "color_pairs": [
+     [
+      "cream",
+      "brown"
+     ],
+     [
+      "camel",
+      "chocolate"
+     ]
+    ],
+    "subcategories": [
+     "coat",
+     "jacket",
+     "sweater",
+     "hat"
+    ],
+    "styles": [
+     "chic",
+     "vintage",
+     "elegant"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [
+     "oversized"
+    ],
+    "layering": "manteau fourrure ceinturé et boutonné sur tenue simple",
+    "formality": [
+     2,
+     4
+    ]
+   },
+   "sources": [
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html",
+    "https://coveteur.com/fall-fashion-trends-2026",
+    "https://fashionunited.fr/actualite/mode/tendances-ce-qui-va-cartonner-en-boutiques-pour-lautomne-hiver-2026/2026080442582",
+    "https://trendalytics.co/insights/fall-winter-2026-fashion-trends-colors-prints-fabrics",
+    "https://numero.com/?p=874167"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "animal-print",
+   "nom": "Léopard et imprimé animal",
+   "description": "Léopard, y compris léopard des neiges, et zébrures sur manteaux, robes et accessoires.",
+   "signaux": {
+    "colors": [
+     "camel",
+     "brown",
+     "grey",
+     "cream"
+    ],
+    "color_pairs": [
+     [
+      "camel",
+      "black"
+     ],
+     [
+      "grey",
+      "cream"
+     ]
+    ],
+    "subcategories": [
+     "coat",
+     "dress",
+     "bag",
+     "shoes"
+    ],
+    "styles": [
+     "edgy",
+     "chic"
+    ],
+    "patterns": [
+     "animal"
+    ],
+    "fits": [
+     "regular",
+     "oversized"
+    ],
+    "layering": "une seule pièce animale par tenue, le reste uni",
+    "formality": [
+     2,
+     5
+    ]
+   },
+   "sources": [
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html",
+    "https://numero.com/?p=874167",
+    "https://trendalytics.co/insights/fall-winter-2026-fashion-trends-colors-prints-fabrics"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "purple-it-color",
+   "nom": "Violet, couleur phare",
+   "description": "Violet du lavande à l'aubergine, en total look ou en accessoire fort.",
+   "signaux": {
+    "colors": [
+     "purple",
+     "lavender"
+    ],
+    "color_pairs": [
+     [
+      "purple",
+      "black"
+     ],
+     [
+      "purple",
+      "burgundy"
+     ],
+     [
+      "purple",
+      "purple"
+     ]
+    ],
+    "subcategories": [
+     "coat",
+     "skirt",
+     "jacket",
+     "bag",
+     "boots"
+    ],
+    "styles": [
+     "chic",
+     "elegant"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [
+     "regular"
+    ],
+    "layering": null,
+    "formality": [
+     2,
+     4
+    ]
+   },
+   "sources": [
+    "https://www.bustle.com/style/fall-2026-fashion-trends",
+    "https://trendalytics.co/insights/fall-winter-2026-fashion-trends-colors-prints-fabrics",
+    "https://numero.com/mode/fashion-week/les-accessoires-automne-hiver-2026-2027-reperes-sur-les-defiles/",
+    "https://fashionunited.uk/news/fashion/pre-fall-2026-colour-in-sophisticated-combinations/2026010785571"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "burgundy-neutral",
+   "nom": "Bordeaux comme nouveau neutre",
+   "description": "Le bordeaux remplace le noir comme base et s'associe à des couleurs vives.",
+   "signaux": {
+    "colors": [
+     "burgundy"
+    ],
+    "color_pairs": [
+     [
+      "burgundy",
+      "yellow"
+     ],
+     [
+      "burgundy",
+      "orange"
+     ],
+     [
+      "burgundy",
+      "blush"
+     ],
+     [
+      "burgundy",
+      "green"
+     ],
+     [
+      "burgundy",
+      "pink"
+     ]
+    ],
+    "subcategories": [
+     "trousers",
+     "jacket",
+     "sweater",
+     "loafers"
+    ],
+    "styles": [
+     "chic",
+     "classic"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [
+     "regular",
+     "relaxed"
+    ],
+    "layering": null,
+    "formality": [
+     2,
+     4
+    ]
+   },
+   "sources": [
+    "https://trendalytics.co/insights/fall-winter-2026-fashion-trends-colors-prints-fabrics",
+    "https://fashionunited.uk/news/fashion/pre-fall-2026-colour-in-sophisticated-combinations/2026010785571",
+    "https://apparelresources.com/fashion-news/trends/ar-colour-report-burgundy-takes-fall-2026/"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "chocolate-brown",
+   "nom": "Marron chocolat",
+   "description": "Le marron profond sert de base, souvent relevé d'orange vif.",
+   "signaux": {
+    "colors": [
+     "chocolate",
+     "brown"
+    ],
+    "color_pairs": [
+     [
+      "chocolate",
+      "orange"
+     ],
+     [
+      "brown",
+      "orange"
+     ],
+     [
+      "chocolate",
+      "cream"
+     ]
+    ],
+    "subcategories": [
+     "coat",
+     "trousers",
+     "sweater",
+     "boots",
+     "bag"
+    ],
+    "styles": [
+     "classic",
+     "minimalist"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [
+     "regular",
+     "relaxed"
+    ],
+    "layering": null,
+    "formality": [
+     2,
+     4
+    ]
+   },
+   "sources": [
+    "https://trendalytics.co/insights/fall-winter-2026-fashion-trends-colors-prints-fabrics",
+    "https://fashionunited.uk/news/fashion/pre-fall-2026-colour-in-sophisticated-combinations/2026010785571",
+    "https://numero.com/?p=874167"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "fringe",
+   "nom": "Franges",
+   "description": "Franges graphiques sur jupes, hauts, sacs et tenues du soir.",
+   "signaux": {
+    "colors": [],
+    "color_pairs": [],
+    "subcategories": [
+     "skirt",
+     "top",
+     "dress",
+     "tote"
+    ],
+    "styles": [
+     "bohemian",
+     "vintage",
+     "chic"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [
+     "regular"
+    ],
+    "layering": null,
+    "formality": [
+     2,
+     4
+    ]
+   },
+   "sources": [
+    "https://coveteur.com/fall-fashion-trends-2026",
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html",
+    "https://numero.com/?p=874167"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "twisted-preppy",
+   "nom": "Preppy revisité",
+   "description": "Torsades, jacquard, argyle, polo, chemise et cravate, jupe plissée et foulard équestre.",
+   "signaux": {
+    "colors": [
+     "cream",
+     "navy",
+     "red",
+     "mustard",
+     "grey",
+     "purple"
+    ],
+    "color_pairs": [
+     [
+      "navy",
+      "cream"
+     ],
+     [
+      "red",
+      "grey"
+     ]
+    ],
+    "subcategories": [
+     "sweater",
+     "shirt",
+     "vest",
+     "skirt",
+     "scarf",
+     "loafers"
+    ],
+    "styles": [
+     "preppy",
+     "classic"
+    ],
+    "patterns": [
+     "patterned",
+     "striped",
+     "checked"
+    ],
+    "fits": [
+     "regular"
+    ],
+    "layering": "pull sans manches sur chemise ; cravate avec chemise",
+    "formality": [
+     2,
+     3
+    ]
+   },
+   "sources": [
+    "https://theimpression.com/fall-2026-rtw-trend-twisted-traditions",
+    "https://numero.com/?p=874167",
+    "https://trendalytics.co/insights/fall-winter-2026-fashion-trends-colors-prints-fabrics",
+    "https://www.bustle.com/style/fall-2026-fashion-trends",
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "lingerie-layering",
+   "nom": "Lingerie et transparence superposées",
+   "description": "Nuisette ou jupe transparente superposée à la maille ou à une veste.",
+   "signaux": {
+    "colors": [
+     "black",
+     "cream",
+     "blush"
+    ],
+    "color_pairs": [
+     [
+      "black",
+      "cream"
+     ]
+    ],
+    "subcategories": [
+     "dress",
+     "camisole",
+     "skirt",
+     "sweater",
+     "jacket"
+    ],
+    "styles": [
+     "romantic",
+     "edgy"
+    ],
+    "patterns": [
+     "solid",
+     "floral"
+    ],
+    "fits": [
+     "slim",
+     "regular"
+    ],
+    "layering": "slip dress over sweater ; jupe transparente avec veste zippée",
+    "formality": [
+     2,
+     4
+    ]
+   },
+   "sources": [
+    "https://numero.com/?p=874167",
+    "https://www.bustle.com/style/fall-2026-fashion-trends",
+    "https://fashionunited.fr/actualite/mode/tendances-ce-qui-va-cartonner-en-boutiques-pour-lautomne-hiver-2026/2026080442582"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "statement-coat",
+   "nom": "Manteau spectaculaire épaules XXL",
+   "description": "Manteaux et vestes aux épaules larges et volumes généreux, inspirés des années 1980.",
+   "signaux": {
+    "colors": [
+     "black",
+     "camel",
+     "pink"
+    ],
+    "color_pairs": [],
+    "subcategories": [
+     "coat",
+     "jacket",
+     "blazer"
+    ],
+    "styles": [
+     "edgy",
+     "chic"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [
+     "oversized"
+    ],
+    "layering": "manteau oversize sur tenue près du corps",
+    "formality": [
+     2,
+     4
+    ]
+   },
+   "sources": [
+    "https://numero.com/?p=874167",
+    "https://luxus-plus.com/luxus-magazine-franges-transparence-fentes-5-tendances-reperes-a-la-fashion-week-automne-hiver-2026-2027/",
+    "https://coveteur.com/fall-fashion-trends-2026"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "new-glamour",
+   "nom": "Nouveau glamour doré",
+   "description": "Sequins, lamé doré, perles et gros bijoux dorés, jusqu'en journée.",
+   "signaux": {
+    "colors": [
+     "black"
+    ],
+    "color_pairs": [],
+    "subcategories": [
+     "dress",
+     "jeans",
+     "earrings",
+     "necklace",
+     "clutch"
+    ],
+    "styles": [
+     "elegant",
+     "chic"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [
+     "slim",
+     "regular"
+    ],
+    "layering": "un bijou doré imposant sur tenue simple de jour",
+    "formality": [
+     3,
+     5
+    ]
+   },
+   "sources": [
+    "https://numero.com/?p=874167",
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html",
+    "https://fashionunited.fr/actualite/mode/tendances-ce-qui-va-cartonner-en-boutiques-pour-lautomne-hiver-2026/2026080442582",
+    "https://numero.com/mode/fashion-week/les-accessoires-automne-hiver-2026-2027-reperes-sur-les-defiles/"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "ladylike-heels",
+   "nom": "Slingbacks, kitten heels et escarpins à bride",
+   "description": "Talons bas, slingbacks bicolores, escarpins à bride en T et chaussures à empeigne haute.",
+   "signaux": {
+    "colors": [
+     "black",
+     "cream",
+     "beige"
+    ],
+    "color_pairs": [
+     [
+      "black",
+      "beige"
+     ]
+    ],
+    "subcategories": [
+     "heels",
+     "flats"
+    ],
+    "styles": [
+     "elegant",
+     "classic"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [],
+    "layering": null,
+    "formality": [
+     3,
+     4
+    ]
+   },
+   "sources": [
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html",
+    "https://numero.com/mode/fashion-week/les-accessoires-automne-hiver-2026-2027-reperes-sur-les-defiles/",
+    "https://blog.trendalytics.co/womenswear-fall/winter-2026-trend-recap"
+   ],
+   "confiance": "haute"
+  },
+  {
+   "id": "biker-leather",
+   "nom": "Esprit motard",
+   "description": "Veste en cuir lisse et boxy portée sur pièce féminine satinée.",
+   "signaux": {
+    "colors": [
+     "black",
+     "brown"
+    ],
+    "color_pairs": [
+     [
+      "black",
+      "cream"
+     ]
+    ],
+    "subcategories": [
+     "jacket",
+     "dress",
+     "camisole",
+     "boots"
+    ],
+    "styles": [
+     "edgy"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [
+     "relaxed"
+    ],
+    "layering": "leather jacket over slip dress",
+    "formality": [
+     2,
+     3
+    ]
+   },
+   "sources": [
+    "https://numero.com/?p=874167",
+    "https://fashionunited.fr/actualite/mode/tendances-ce-qui-va-cartonner-en-boutiques-pour-lautomne-hiver-2026/2026080442582"
+   ],
+   "confiance": "moyenne"
+  },
+  {
+   "id": "countryside-chic",
+   "nom": "Chic campagnard",
+   "description": "Tons terreux, grosses mailles, capes et manteaux oversize, bottes à brides.",
+   "signaux": {
+    "colors": [
+     "brown",
+     "khaki",
+     "olive",
+     "camel"
+    ],
+    "color_pairs": [
+     [
+      "khaki",
+      "brown"
+     ],
+     [
+      "olive",
+      "camel"
+     ]
+    ],
+    "subcategories": [
+     "coat",
+     "sweater",
+     "dress",
+     "boots",
+     "scarf"
+    ],
+    "styles": [
+     "classic",
+     "bohemian",
+     "vintage"
+    ],
+    "patterns": [
+     "checked",
+     "solid"
+    ],
+    "fits": [
+     "oversized",
+     "relaxed"
+    ],
+    "layering": "cape ou manteau oversize sur grosse maille",
+    "formality": [
+     1,
+     3
+    ]
+   },
+   "sources": [
+    "https://numero.com/?p=874167",
+    "https://coveteur.com/fall-fashion-trends-2026"
+   ],
+   "confiance": "moyenne"
+  },
+  {
+   "id": "tall-boots",
+   "nom": "Bottes hautes et cuissardes",
+   "description": "Cuissardes, effet croco ou colorées, et bottes hautes fourrées.",
+   "signaux": {
+    "colors": [
+     "black",
+     "brown",
+     "purple"
+    ],
+    "color_pairs": [],
+    "subcategories": [
+     "boots"
+    ],
+    "styles": [
+     "chic",
+     "edgy"
+    ],
+    "patterns": [
+     "solid",
+     "animal"
+    ],
+    "fits": [],
+    "layering": "cuissardes avec jupe courte ou robe",
+    "formality": [
+     2,
+     4
+    ]
+   },
+   "sources": [
+    "https://blog.trendalytics.co/womenswear-fall/winter-2026-trend-recap",
+    "https://numero.com/mode/fashion-week/les-accessoires-automne-hiver-2026-2027-reperes-sur-les-defiles/"
+   ],
+   "confiance": "moyenne"
+  },
+  {
+   "id": "color-block",
+   "nom": "Color block",
+   "description": "Blocs de couleurs vives, rouge et vert pomme, ou neutres associés à une couleur forte.",
+   "signaux": {
+    "colors": [
+     "red",
+     "green",
+     "orange"
+    ],
+    "color_pairs": [
+     [
+      "red",
+      "green"
+     ],
+     [
+      "grey",
+      "red"
+     ],
+     [
+      "camel",
+      "orange"
+     ]
+    ],
+    "subcategories": [
+     "sweater",
+     "coat",
+     "skirt",
+     "trousers"
+    ],
+    "styles": [
+     "chic",
+     "streetwear"
+    ],
+    "patterns": [
+     "solid"
+    ],
+    "fits": [
+     "regular",
+     "oversized"
+    ],
+    "layering": null,
+    "formality": [
+     2,
+     3
+    ]
+   },
+   "sources": [
+    "https://numero.com/?p=874167",
+    "https://blog.trendalytics.co/womenswear-fall/winter-2026-trend-recap"
+   ],
+   "confiance": "moyenne"
+  },
+  {
+   "id": "sailor-navy",
+   "nom": "Esprit marin",
+   "description": "Cols marins, cabans et fermetures à brandebourgs.",
+   "signaux": {
+    "colors": [
+     "navy",
+     "white"
+    ],
+    "color_pairs": [
+     [
+      "navy",
+      "white"
+     ]
+    ],
+    "subcategories": [
+     "coat",
+     "blouse",
+     "top"
+    ],
+    "styles": [
+     "classic",
+     "preppy"
+    ],
+    "patterns": [
+     "solid",
+     "striped"
+    ],
+    "fits": [
+     "regular"
+    ],
+    "layering": "caban sur haut à col marin",
+    "formality": [
+     2,
+     3
+    ]
+   },
+   "sources": [
+    "https://www.aol.com/articles/20-fashion-month-trends-fall-130230680.html"
+   ],
+   "confiance": "faible"
+  }
+ ]
+}

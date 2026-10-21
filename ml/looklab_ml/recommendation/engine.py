@@ -12,6 +12,7 @@ rewrites explanations, it never decides what is in an outfit.
 from __future__ import annotations
 
 import itertools
+import random
 import statistics
 from collections import Counter
 from dataclasses import dataclass, field
@@ -20,6 +21,7 @@ from .. import taxonomy as tx
 from ..colors import NEUTRALS, expand_color_terms, harmony_score
 from .models import Constraints, Garment, Outfit, ScoreBreakdown, ShoppingSuggestion
 from .preferences import PreferenceModel
+from .trends import SEASON_LABEL, TREND_MIN_FIT, TRENDS, trend_fit
 
 WEIGHTS = {
     "color": 0.20,
@@ -30,11 +32,18 @@ WEIGHTS = {
     "preference": 0.10,
     "request": 0.20,
     "pattern": 0.05,
+    "trend": 0.50,  # strong: only used by "surprise me". Ignored (neutral, weight dropped) without Constraints.trend_id
 }
 MAX_BASES = 160
 SHOE_OPTIONS = 3
 OUTER_OPTIONS = 2
 MMR_LAMBDA = 0.72
+# Shoe dressiness inferred from the name (FR/EN) when the garment has no formality; first match wins.
+SHOE_FORMALITY = (
+    (("talon", "heel", "escarpin", "pump", "loafer", "mocassin", "derby", "ballerine"), 4),
+    (("basket", "sneaker", "trainer", "tennis", "sandal", "claquette", "tong"), 2),
+    (("boot", "botte", "bottine"), 3),
+)
 DETAIL_FIT_EQUIVALENTS = {"wide": ("relaxed", "oversized")}
 
 
@@ -70,6 +79,13 @@ def _target_formality(c: Constraints) -> tuple[float, float] | None:
     return lo, hi
 
 
+def shoe_formality(g: Garment) -> float | None:
+    if g.formality is not None:
+        return g.formality
+    text = " ".join([g.subcategory or "", g.name or ""]).lower()
+    return next((f for keys, f in SHOE_FORMALITY if any(k in text for k in keys)), None)
+
+
 def _matches_details(g: Garment, details: list[str]) -> bool:
     text = " ".join([g.name or "", g.subcategory or "", " ".join(g.details)]).lower()
     for d in details:
@@ -84,6 +100,23 @@ def _matches_details(g: Garment, details: list[str]) -> bool:
 def _matches_sub(g: Garment, sub: str) -> bool:
     text = " ".join([g.subcategory or "", g.name or ""]).lower()
     return sub in text or g.category == sub
+
+
+def _swap_text(removed: list[Garment], added: list[Garment]) -> str:
+    """'Remplace X par Y ; ajoute Z ; retire W': a removed piece pairs with an added one of the same slot."""
+    rest, swaps, dropped = list(added), [], []
+    for r in removed:
+        a = next((a for a in rest if a.slot == r.slot), None)
+        if a:
+            rest.remove(a)
+            swaps.append(f"{r.label} par {a.label}")
+        else:
+            dropped.append(r.label)
+    parts = ["remplace " + " et ".join(swaps)] if swaps else []
+    parts += ["ajoute " + " et ".join(g.label for g in rest)] if rest else []
+    parts += ["retire " + " et ".join(dropped)] if dropped else []
+    text = " ; ".join(parts)
+    return text[:1].upper() + text[1:]
 
 
 def filter_garments(wardrobe: list[Garment], c: Constraints) -> tuple[list[Garment], dict[str, int]]:
@@ -108,6 +141,14 @@ def filter_garments(wardrobe: list[Garment], c: Constraints) -> tuple[list[Garme
             reason = "not owned"
         elif c.season and g.season and c.season not in g.season and not locked:
             reason = "wrong season"
+        elif (
+            g.category == "shoes"
+            and c.occasion in tx.OCCASION_PROFILES
+            and not locked
+            and (sf := shoe_formality(g)) is not None
+            and not (target[0] <= sf <= target[1] + 1)
+        ):
+            reason = "shoes do not suit the occasion"
         elif target and g.formality is not None and not locked and not (target[0] - 1 <= g.formality <= target[1] + 1):
             reason = "formality does not suit the occasion"
         elif occ_styles and g.style and not locked and all(max(tx.style_affinity(s, o) for o in occ_styles) <= -0.5 for s in g.style):
@@ -230,11 +271,21 @@ class OutfitEngine:
         if bold > 1:
             reasons.append("two bold patterns compete")
 
+        # trend alignment
+        trend = TRENDS.get(c.trend_id or "")
+        if trend:
+            trend_s = trend_fit(garments, trend)
+            if trend_s >= TREND_MIN_FIT:  # never claim a trend the outfit does not follow
+                reasons.insert(0, f"Tendance {SEASON_LABEL} : {trend['nom']}")
+        else:
+            trend_s = 0.5
+
         comps = {
             "color": color_s, "style": style_s, "formality": form_s, "layering": layer_s,
-            "fit": fit_s, "preference": pref_s, "request": req_s, "pattern": pattern_s,
+            "fit": fit_s, "preference": pref_s, "request": req_s, "pattern": pattern_s, "trend": trend_s,
         }  # fmt: skip
-        total = sum(self.weights[k] * v for k, v in comps.items()) / sum(self.weights.values())
+        w = {k: v for k, v in self.weights.items() if trend or k != "trend"}
+        total = sum(w[k] * comps[k] for k in w) / sum(w.values())
         return ScoreBreakdown(**comps, total=total), reasons
 
     # ---------------------------------------------------------------- assembly
@@ -246,6 +297,7 @@ class OutfitEngine:
         avoid_keys: set[str] | None = None,
     ) -> RecommendationResult:
         pool, rejected = filter_garments(wardrobe, c)
+        rng = random.Random(c.seed) if c.seed is not None else None
         res = RecommendationResult(outfits=[], constraints=c, pool_size=len(pool), rejected=rejected)
         by_slot: dict[str, list[Garment]] = {}
         for g in pool:
@@ -340,6 +392,7 @@ class OutfitEngine:
                 )
             )
         candidates: dict[str, tuple[list[Garment], ScoreBreakdown, list[str]]] = {}
+        trend = TRENDS.get(c.trend_id or "")
         for base in bases:
             shoe_opts: list[Garment | None] = (
                 sorted(shoes, key=lambda s: -self.score(base + [s], c, prefs)[0].total)[:SHOE_OPTIONS] if shoes else [None]
@@ -360,13 +413,17 @@ class OutfitEngine:
                             outfit = outfit + [locked_slots[slot]]
                     if best not in outfit and self.score(outfit + [best], c, prefs)[0].total > self.score(outfit, c, prefs)[0].total:
                         outfit = outfit + [best]
-                if not self._satisfies(outfit, c, active_subs):
+                if not self._satisfies(outfit, c, active_subs, {g.id for g in locked}):
+                    continue
+                if trend and trend_fit(outfit, trend) < c.min_trend_fit:
                     continue
                 key = "|".join(sorted(g.id for g in outfit))
                 if avoid_keys and key in avoid_keys:
                     continue
                 if key not in candidates:
                     sb, reasons = self.score(outfit, c, prefs)
+                    if rng:
+                        sb.total += rng.uniform(-0.04, 0.04)
                     candidates[key] = (outfit, sb, reasons)
 
         if not candidates:
@@ -380,8 +437,48 @@ class OutfitEngine:
             res.notes.append(f"Only {len(res.outfits)} distinct outfit(s) fit these constraints with the current wardrobe.")
         return res
 
-    def _satisfies(self, outfit: list[Garment], c: Constraints, active_subs: list[str]) -> bool:
-        # Kept (locked) items are enforced by slot candidates in ``recommend``.
+    def variations(
+        self,
+        wardrobe: list[Garment],
+        garment_ids: list[str],
+        count: int = 4,
+        swap_id: str | None = None,
+        prefs: PreferenceModel | None = None,
+    ) -> RecommendationResult:
+        """Owned-only outfits close to ``garment_ids``: 1-2 pieces change, the rest is kept.
+
+        One run per swapped slot (the whole outfit if ``swap_id`` is None): other pieces locked, the
+        swapped one excluded, the original avoided. Runs are interleaved so every slot gets a turn.
+        """
+        by_id = {g.id: g for g in wardrobe}
+        orig = [by_id[i] for i in garment_ids]
+        orig_ids = {g.id for g in orig}
+        targets = [g for g in orig if swap_id in (None, g.id)]
+        c0 = Constraints(count=count, owned_only=True)
+        res = RecommendationResult(outfits=[], constraints=c0, pool_size=0)
+        runs = []
+        for t in targets:
+            c = c0.copy(locked_garment_ids=[g.id for g in orig if g is not t], excluded_garment_ids=[t.id])
+            r = self.recommend(wardrobe, c, prefs, {"|".join(sorted(orig_ids))})
+            res.pool_size = max(res.pool_size, r.pool_size)
+            runs.append(r.outfits)
+        seen: set[str] = set()
+        for row in itertools.zip_longest(*runs):
+            for o in filter(None, row):
+                new = set(o.garment_ids)
+                removed, added = [by_id[i] for i in orig_ids - new], [by_id[i] for i in new - orig_ids]
+                if o.key in seen or not 1 <= max(len(removed), len(added)) <= 2 or len(res.outfits) >= count:
+                    continue
+                seen.add(o.key)
+                o.explanation.insert(0, _swap_text(removed, added))
+                res.outfits.append(o)
+        if not res.outfits:
+            res.notes.append("Aucune variation possible avec les pièces possédées.")
+        return res
+
+    def _satisfies(self, outfit: list[Garment], c: Constraints, active_subs: list[str], locked_ids: set[str]) -> bool:
+        if not locked_ids <= {g.id for g in outfit}:  # kept items must all be present (two kept items can share a slot)
+            return False
         for sub in active_subs:
             if not any(_matches_sub(g, sub) for g in outfit):
                 return False

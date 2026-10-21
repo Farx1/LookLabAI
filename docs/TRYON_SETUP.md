@@ -34,6 +34,37 @@ Environment knobs: `LOOKLAB_FASHN_WEIGHTS_DIR`, `LOOKLAB_FASHN_IDLE_UNLOAD_SECON
 | `parser_free` (default) | flat-lay / product shots | no NVIDIA-licensed weights loaded |
 | `full` | flat-lay **and** worn-by-a-person photos | requires `pip install fashn-human-parser transformers` and accepting its **non-commercial** license |
 
+### Layered mode: exact garment, untouched photo
+
+FASHN alone redraws the whole frame at about 576x768 and keeps the silhouette of the old garment. The layered mode fixes both. It is on by default when its models are available. Otherwise the Studio falls back to the plain mode and the job result says why (`fidelity_mode: segfree`, `fidelity_reason`). It never switches to a paid provider.
+
+How it works:
+
+1. Qwen3-VL (through your local Ollama) lists the worn items with rough boxes.
+2. SAM2 cuts them out. The cut-outs become the label map that FASHN expects, so only the replaced layer is repainted.
+3. SAM2 cuts the new garment out of the result. The result is pasted back at full resolution inside the old garment plus the new garment, feathered. Every other pixel is the original photo.
+
+Layer replaced: outerwear replaces the outer layer. A top replaces the visible base layer and keeps the outer layer when one is worn on top. A bottom replaces trousers or skirt. A dress or jumpsuit replaces top and bottom. Scarf, bag, headband, hat and jewelry are always kept.
+
+If the new outer layer is shorter than the old one, the result carries `uncovered_area: true`. The Studio then suggests adding a top.
+
+Install:
+
+```bash
+# 1. Vision model (Apache-2.0, 1.9 GB per `ollama list`). Ollama must be running: LookLab never starts it.
+ollama pull qwen3-vl:2b
+
+# 2. SAM2 (Apache-2.0) and its weights (184 MB, SAM 2.1 small, sha256 checked by the script), next to the FASHN weights
+uv pip install -e "ml[tryon]"
+uv run python infrastructure/gpu-worker/fetch_weights.py weights/fashn-vton-1.5 weights/sam2
+```
+
+`GET /api/system` (`layered_tryon`) and `GET /api/tryon/providers` (`layered`) report whether Ollama, the model and SAM2 are ready, with the reason when they are not. The SAM2 path can be set with `LOOKLAB_SAM2_WEIGHTS`.
+
+VRAM: Qwen (about 3 GB), FASHN (about 5.5 GB) and SAM2 (under 1 GB) do not fit together on an 8 GB card. The stages therefore run in sequence. FASHN is unloaded first, Qwen is unloaded from Ollama before FASHN starts, and SAM2 is freed after each use. The cost is a FASHN reload on every job (see `FEASIBILITY.md` section 4.2 for measured timings).
+
+Known limits: Qwen3-VL 2B boxes are rough, so hair that falls over a garment and thin straps can be repainted slightly. Belts of the old or new garment can be lost. Use the plain mode if you prefer a whole-image result.
+
 ## Mode C — remote GPU running the same model
 
 Build and run the worker on any GPU host you control:

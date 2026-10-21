@@ -46,7 +46,7 @@ export default function LookbookPage() {
             {b.outfits.map((o) => (
               <figure key={o.id} className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-line bg-paper">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={o.collage_url} alt={o.title} className="w-full" loading="lazy" />
+                {o.collage_url ? <img src={o.collage_url} alt={o.title} className="w-full" loading="lazy" /> : <div className="flex aspect-[4/5] w-full items-center justify-center bg-cream p-3 text-center text-xs text-muted">Pieces deleted</div>}
                 <figcaption className="px-3 py-2 text-xs capitalize">{o.title}</figcaption>
               </figure>
             ))}

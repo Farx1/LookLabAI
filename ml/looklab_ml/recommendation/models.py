@@ -63,6 +63,9 @@ class Constraints:
     locked_garment_ids: list[str] = field(default_factory=list)
     excluded_garment_ids: list[str] = field(default_factory=list)
     required_details: list[str] = field(default_factory=list)  # e.g. "wide" for "a wide skirt"
+    trend_id: str | None = None  # FW26 trend to align on (see trends.py)
+    min_trend_fit: float = 0.0  # hard floor on trend_fit when trend_id is set
+    seed: int | None = None  # set = small reproducible score noise for variety
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -89,6 +92,7 @@ class ScoreBreakdown:
     request: float
     pattern: float
     total: float
+    trend: float = 0.5  # neutral without Constraints.trend_id
 
     def to_dict(self) -> dict:
         return {k: round(v, 3) for k, v in asdict(self).items()}

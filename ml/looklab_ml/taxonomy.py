@@ -32,6 +32,8 @@ TRYON_CATEGORY = {
     "dress": "one-pieces",
     "jumpsuit": "one-pieces",
 }
+# Multi-garment try-on order: lower layers first, outerwear last (each step dresses the previous output).
+TRYON_LAYER = {"bottom": 0, "dress": 0, "jumpsuit": 0, "top": 1, "outerwear": 2}
 
 SUBCATEGORY_HINTS = {
     # keyword -> (category, subcategory)

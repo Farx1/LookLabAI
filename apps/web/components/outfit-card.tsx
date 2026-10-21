@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { Bookmark, Check, ThumbsDown, ThumbsUp, WandSparkles } from "lucide-react";
-import type { Outfit } from "@looklab/shared-types";
+import { Bookmark, Check, ExternalLink, Loader2, Shuffle, ThumbsDown, ThumbsUp, WandSparkles } from "lucide-react";
+import type { Outfit, RecommendationResponse } from "@looklab/shared-types";
 import { Badge, Button, cn } from "@looklab/ui";
 import { api, errorMessage } from "@/lib/api";
 import { label, money, pct } from "@/lib/format";
@@ -28,6 +28,38 @@ export function ScoreBreakdownBars({ score }: { score: Outfit["score"] }) {
   );
 }
 
+/** "Variations" button + the panel to render under the card: same look with 1-2 owned pieces swapped. */
+export function useVariations(garmentIds: string[]) {
+  const [list, setList] = useState<Outfit[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function run() {
+    setBusy(true);
+    setErr(null);
+    try {
+      setList((await api.post<RecommendationResponse>("/api/outfits/variations", { garment_ids: garmentIds, count: 4 })).outfits);
+    } catch (e) {
+      setErr(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const button = (
+    <Button size="sm" variant="outline" onClick={run} disabled={busy} aria-busy={busy}>
+      {busy ? <Loader2 className="animate-spin" /> : <Shuffle />} Variations
+    </Button>
+  );
+  const panel = (err || list) && (
+    <section aria-label="Variations" className="grid gap-4">
+      {err && <p role="alert" className="text-xs text-red-700">{err}</p>}
+      {list?.length === 0 && <p className="text-xs text-muted">No variation possible with the pieces you own.</p>}
+      {list?.map((o, i) => <OutfitCard key={o.garment_ids.join()} outfit={o} rank={i + 1} />)}
+    </section>
+  );
+  return { button, panel };
+}
+
 export function OutfitCard({ outfit, rank, occasion, constraints, onFocus }: { outfit: Outfit; rank?: number; occasion?: string | null; constraints?: unknown; onFocus?: () => void }) {
   const [saved, setSaved] = useState(false);
   const [vote, setVote] = useState<"like" | "dislike" | null>(null);
@@ -35,6 +67,7 @@ export function OutfitCard({ outfit, rank, occasion, constraints, onFocus }: { o
   const [showScore, setShowScore] = useState(false);
   const currency = outfit.garments[0]?.currency ?? "EUR";
   const tryable = outfit.garments.filter((g) => TRYABLE.has(g.category));
+  const variations = useVariations(outfit.garment_ids);
 
   async function save() {
     try {
@@ -56,6 +89,7 @@ export function OutfitCard({ outfit, rank, occasion, constraints, onFocus }: { o
   }
 
   return (
+    <div className="flex flex-col gap-3">
     <article className="flex flex-col overflow-hidden rounded-3xl border border-line bg-paper" onMouseEnter={onFocus}>
       <div className="relative aspect-[4/5] bg-cream">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -70,6 +104,10 @@ export function OutfitCard({ outfit, rank, occasion, constraints, onFocus }: { o
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={g.thumb_url} alt="" className="size-6 rounded-full bg-white object-contain" />
               <span className="capitalize">{g.name ?? label(g.subcategory ?? g.category)}</span>
+              {(g.brand || g.price != null) && <span className="text-muted">{[g.brand, g.price != null && money(g.price, g.currency)].filter(Boolean).join(" · ")}</span>}
+              {g.product_url?.startsWith("http") && (
+                <a href={g.product_url} target="_blank" rel="noopener noreferrer" aria-label={`Product page: ${g.name ?? g.category}`} className="text-muted hover:text-chocolate"><ExternalLink className="size-3" /></a>
+              )}
               {!g.is_owned && <span className="text-burgundy">· buy</span>}
             </li>
           ))}
@@ -101,9 +139,10 @@ export function OutfitCard({ outfit, rank, occasion, constraints, onFocus }: { o
           </Button>
           {tryable.length > 0 && (
             <Button size="sm" variant="outline" asChild>
-              <Link href={`/studio?garment=${tryable[0].id}&outfit=${outfit.garment_ids.join(",")}`}><WandSparkles /> Try on</Link>
+              <Link href={`/studio?garments=${tryable.map((g) => g.id).join(",")}&outfit=${outfit.garment_ids.join(",")}`}><WandSparkles /> Try on</Link>
             </Button>
           )}
+          {variations.button}
           <div className="ml-auto flex">
             <Button size="icon" variant="ghost" aria-label="More like this" onClick={() => feedback("like")}>
               <ThumbsUp className={cn(vote === "like" && "fill-chocolate")} />
@@ -115,5 +154,7 @@ export function OutfitCard({ outfit, rank, occasion, constraints, onFocus }: { o
         </div>
       </div>
     </article>
+    {variations.panel}
+    </div>
   );
 }

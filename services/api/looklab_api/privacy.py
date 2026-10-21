@@ -86,6 +86,12 @@ def purge_expired(db: Session, ctx: AppContext) -> int:
             cutoff = utcnow() - timedelta(days=int(pdays))
             for p in db.scalars(select(PersonPhoto).where(PersonPhoto.user_id == prof.user_id, PersonPhoto.created_at < cutoff)).all():
                 n += 1 + delete_person_photo(db, ctx, p)
+    # outfit photos only live for their job; a job cancelled while queued never reaches its cleanup
+    # ponytail: scans every finished analysis job each run; add a column or an index if the job table grows large.
+    for j in db.scalars(select(Job).where(Job.kind == "outfit_analysis", Job.status.in_(("cancelled", "failed", "succeeded")))).all():
+        if key := (j.payload or {}).get("image_key"):
+            ctx.storage.delete(key)
+            j.payload = {k: v for k, v in j.payload.items() if k != "image_key"}  # swept once
     db.commit()
     return n
 

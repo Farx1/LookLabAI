@@ -8,7 +8,12 @@ import { Badge, Button, cn } from "@looklab/ui";
 import { api, fetcher } from "@/lib/api";
 import { label, money, pct, timeAgo } from "@/lib/format";
 import { EmptyState, PageHeader } from "@/components/page-header";
-import { ScoreBreakdownBars } from "@/components/outfit-card";
+import { ScoreBreakdownBars, useVariations } from "@/components/outfit-card";
+
+function SavedVariations({ ids }: { ids: string[] }) {
+  const { button, panel } = useVariations(ids);
+  return <div className="space-y-3"><div>{button}</div>{panel}</div>;
+}
 
 export default function SavedPage() {
   const { data, mutate } = useSWR<SavedOutfit[]>("/api/outfits/saved", fetcher);
@@ -42,7 +47,7 @@ export default function SavedPage() {
             {pair.map((o) => (
               <div key={o.id} className="space-y-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={o.collage_url} alt={o.title} className="aspect-[4/5] w-full rounded-2xl object-cover" />
+                {o.collage_url ? <img src={o.collage_url} alt={o.title} className="aspect-[4/5] w-full rounded-2xl object-cover" /> : <div className="flex aspect-[4/5] w-full rounded-2xl items-center justify-center bg-cream p-3 text-center text-xs text-muted">Pieces deleted</div>}
                 <p className="text-sm font-medium capitalize">{o.title}</p>
                 {o.score.total != null && <p className="text-xs text-muted">{pct(o.score.total)}% match</p>}
                 {o.score.total != null && <ScoreBreakdownBars score={o.score as never} />}
@@ -60,7 +65,7 @@ export default function SavedPage() {
           {data?.map((o) => (
             <article key={o.id} className={cn("overflow-hidden rounded-3xl border bg-paper", compare.includes(o.id) ? "border-burgundy" : "border-line")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={o.collage_url} alt={o.title} className="aspect-[4/5] w-full object-cover" loading="lazy" />
+              {o.collage_url ? <img src={o.collage_url} alt={o.title} className="aspect-[4/5] w-full object-cover" loading="lazy" /> : <div className="flex aspect-[4/5] w-full items-center justify-center bg-cream p-3 text-center text-xs text-muted">Pieces deleted</div>}
               <div className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium capitalize leading-snug">{o.title}</p>
@@ -79,6 +84,7 @@ export default function SavedPage() {
                   </Button>
                   <Button size="icon" variant="ghost" aria-label="Delete" className="ml-auto text-red-700" onClick={() => remove(o)}><Trash2 /></Button>
                 </div>
+                <SavedVariations ids={o.garment_ids} />
               </div>
             </article>
           ))}

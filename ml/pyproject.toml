@@ -13,7 +13,8 @@ dependencies = [
 # Florence-2 / Qwen local inference through transformers (CPU or GPU)
 vision-models = ["torch>=2.2", "transformers>=4.45", "einops", "timm"]
 # FASHN VTON v1.5. Install fashn-vton itself from its git repo, see docs/TRYON_SETUP.md
-tryon = ["torch>=2.2", "torchvision", "safetensors", "huggingface_hub", "opencv-python-headless", "einops", "onnxruntime-gpu", "matplotlib", "tqdm"]
+# sam2 (Apache-2.0) cuts garments for the layered mode; it also pulls hydra-core and iopath
+tryon = ["torch>=2.2", "torchvision", "safetensors", "huggingface_hub", "opencv-python-headless", "einops", "onnxruntime-gpu", "matplotlib", "tqdm", "sam2>=1.1.0,<2"]
 creative = ["torch>=2.2", "diffusers>=0.35", "transformers>=4.45", "accelerate"]
 
 [build-system]

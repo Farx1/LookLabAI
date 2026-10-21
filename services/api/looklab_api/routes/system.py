@@ -48,6 +48,7 @@ def system(ctx=Depends(get_ctx), user=Depends(current_user)):
         "storage_backend": ctx.settings.storage_backend,
         "policy": p.model_dump(),
         "tryon_providers": ctx.registry.tryon_status(),
+        "layered_tryon": ctx.registry.layer_status(),
         "analyzers": ctx.registry.analysis_status(),
         "fashn": {
             "parser_mode": ctx.settings.fashn_parser_mode,

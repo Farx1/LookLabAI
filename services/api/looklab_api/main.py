@@ -13,7 +13,7 @@ from .context import AppContext, build_storage
 from .db import Base, make_engine, make_sessionmaker
 from .jobs import JobRunner, recover_interrupted
 from .providers import ProviderError, ProviderRegistry
-from .routes import auth_routes, garments, outfits, photos, stylist, system, tryon
+from .routes import analyze, auth_routes, garments, outfits, photos, stylist, system, tryon
 from .routes import settings as settings_routes
 
 log = logging.getLogger("looklab")
@@ -76,7 +76,7 @@ def create_app(settings: Settings | None = None, provider_overrides: dict | None
         resp.headers.setdefault("X-Frame-Options", "DENY")
         return resp
 
-    for r in (system, auth_routes, photos, garments, outfits, stylist, tryon, settings_routes):
+    for r in (system, auth_routes, photos, analyze, garments, outfits, stylist, tryon, settings_routes):
         app.include_router(r.router)
 
     @app.get("/api/{rest:path}", include_in_schema=False)

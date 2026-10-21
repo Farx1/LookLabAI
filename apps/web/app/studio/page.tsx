@@ -3,15 +3,17 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { Bookmark, Download, Loader2, Lock, RefreshCw, Trash2, WandSparkles } from "lucide-react";
-import type { Garment, Job, PersonPhoto, ProviderStatus, TryOnResult } from "@looklab/shared-types";
+import type { Garment, Job, Outfit, PersonPhoto, ProviderStatus, RecommendationResponse, TryOnResult } from "@looklab/shared-types";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Dialog, DialogContent, Input, Label, Select, cn } from "@looklab/ui";
 import { ApiError, api, errorMessage, fetcher } from "@/lib/api";
 import { garmentTitle, label, usd } from "@/lib/format";
 import { EmptyState, Notice, PageHeader } from "@/components/page-header";
 import { CompareSlider } from "@/components/compare-slider";
+import { OutfitCard } from "@/components/outfit-card";
 import { Dropzone } from "@/components/uploader";
 
 const TRYABLE = new Set(["top", "bottom", "dress", "jumpsuit", "outerwear"]);
+const MAX_GARMENTS = 4; // keep in sync with the API limit
 type ProvidersResp = { providers: ProviderStatus[]; spending: { month_spend_usd: number; effective_limit_usd: number }; allow_external_processing: boolean };
 type Estimate = { provider: string; estimated_cost_usd: number; paid: boolean; fidelity: string; sends_images_externally: boolean; category: string; garment_photo_type: string };
 
@@ -62,13 +64,56 @@ function PhotoConsentDialog({ open, onOpenChange, onUploaded }: { open: boolean;
   );
 }
 
+function GarmentPreview({ g, picks, focusId, onFocus, compact }: { g: Garment; picks: Garment[]; focusId: string; onFocus: (id: string) => void; compact: boolean }) {
+  const [zoom, setZoom] = useState(false);
+  const [origin, setOrigin] = useState("50% 50%");
+  const at = (e: { clientX: number; clientY: number; currentTarget: HTMLElement }) => {
+    const b = e.currentTarget.getBoundingClientRect();
+    setOrigin(`${((e.clientX - b.left) / b.width) * 100}% ${((e.clientY - b.top) / b.height) * 100}%`);
+  };
+  return (
+    <Card className="lg:sticky lg:top-4">
+      <CardContent className="space-y-3 pt-6">
+        <div
+          className={cn("mx-auto aspect-[3/4] cursor-zoom-in overflow-hidden rounded-xl border border-line bg-white", compact ? "max-h-64" : "max-h-[70vh]")}
+          onPointerMove={(e) => { if (e.pointerType === "mouse") { at(e); setZoom(true); } }}
+          onPointerLeave={(e) => { if (e.pointerType === "mouse") setZoom(false); }}
+          onPointerUp={(e) => { if (e.pointerType !== "mouse") { at(e); setZoom((z) => !z); } }} // tap toggles zoom on touch/pen
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={g.image_url} alt={garmentTitle(g)} style={{ transform: zoom ? "scale(2.5)" : "scale(1)", transformOrigin: origin }} className="h-full w-full object-contain transition-transform duration-100" />
+        </div>
+        <div className="text-sm">
+          <p className="font-medium">{garmentTitle(g)}</p>
+          {g.brand && <p className="text-muted">{g.brand}</p>}
+          {g.price != null && <p className="text-muted">{g.price} {g.currency}</p>}
+          {g.product_url && <a href={g.product_url} target="_blank" rel="noopener noreferrer" className="text-xs underline">View product</a>}
+        </div>
+        {picks.length > 1 && (
+          <div className="flex gap-2">
+            {picks.map((p) => (
+              <button key={p.id} aria-label={garmentTitle(p)} aria-pressed={p.id === focusId} onClick={() => onFocus(p.id)} className={cn("size-12 overflow-hidden rounded-xl border-2 bg-white", p.id === focusId ? "border-burgundy" : "border-line")}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.thumb_url} alt="" className="h-full w-full object-contain p-1" />
+              </button>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function StudioInner() {
   const params = useSearchParams();
   const { data: photos, mutate: mutatePhotos } = useSWR<PersonPhoto[]>("/api/photos", fetcher);
   const { data: garments } = useSWR<Garment[]>("/api/garments", fetcher);
   const { data: prov, mutate: mutateProv } = useSWR<ProvidersResp>("/api/tryon/providers", fetcher);
   const [photoId, setPhotoId] = useState<string | null>(null);
-  const [garmentId, setGarmentId] = useState<string | null>(params.get("garment"));
+  const idsFromUrl = () => (params.get("garments") ?? params.get("garment") ?? "").split(",").filter(Boolean);
+  const [garmentIds, setGarmentIds] = useState<string[]>(idsFromUrl);
+  const [focusedId, setFocusedId] = useState<string | null>(garmentIds[0] ?? null);
+  const garmentKey = garmentIds.join(",");
   const [provider, setProvider] = useState("auto");
   const [steps, setSteps] = useState(30);
   const [seed, setSeed] = useState(42);
@@ -77,13 +122,18 @@ function StudioInner() {
   const [job, setJob] = useState<Job | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [consentOpen, setConsentOpen] = useState(false);
+  const [topsOnly, setTopsOnly] = useState(false);
   const { data: results, mutate: mutateResults } = useSWR<TryOnResult[]>(photoId ? `/api/tryon/results?person_photo_id=${photoId}` : null, fetcher);
   const [current, setCurrent] = useState<TryOnResult | null>(null);
+  const [recs, setRecs] = useState<Outfit[]>([]);
+  const currentLock = current?.garment_ids.join(",");
 
   const outfitIds = params.get("outfit")?.split(",") ?? [];
   const tryable = useMemo(() => (garments ?? []).filter((g) => TRYABLE.has(g.category)), [garments]);
   const photo = photos?.find((p) => p.id === photoId);
-  const garment = garments?.find((g) => g.id === garmentId);
+  const garment = garments?.find((g) => g.id === garmentIds[0]);
+  const picks = garmentIds.map((id) => garments?.find((g) => g.id === id)).filter((g): g is Garment => !!g);
+  const focused = picks.find((g) => g.id === focusedId) ?? picks[picks.length - 1]; // removed focus falls back to last pick
   const realAvailable = prov?.providers.some((p) => p.name === "local_fashn" && p.available);
 
   useEffect(() => {
@@ -93,17 +143,39 @@ function StudioInner() {
     if (prov && !realAvailable && provider === "auto") setProvider(prov.providers.find((p) => p.name === "mock" && p.enabled) ? "mock" : "auto");
   }, [prov, realAvailable, provider]);
 
+  // a "Try on" link from an outfit card lands here with new query params
+  useEffect(() => {
+    setGarmentIds(idsFromUrl());
+    setFocusedId(idsFromUrl()[0] ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.toString()]);
+
+  // outfits that reuse the garment(s) of the displayed result
+  useEffect(() => {
+    setRecs([]);
+    if (!currentLock) return;
+    let live = true;
+    api
+      .post<RecommendationResponse>("/api/outfits/generate", { prompt: "outfits with this piece", constraints: { locked_garment_ids: currentLock.split(",") }, count: 6 })
+      .then((r) => live && setRecs(r.outfits))
+      .catch(() => {}); // suggestions are optional: stay quiet on failure
+    return () => {
+      live = false;
+    };
+  }, [currentLock]);
+
   // live estimate whenever the selection changes
   useEffect(() => {
     setEstimate(null);
     setApprove(false);
-    if (!photoId || !garmentId) return;
+    if (!photoId || !garmentIds.length) return;
     api
-      .post<Estimate>("/api/tryon/estimate", { person_photo_id: photoId, garment_id: garmentId, provider, params: { num_timesteps: steps, seed } })
+      .post<Estimate>("/api/tryon/estimate", { person_photo_id: photoId, garment_ids: garmentIds, provider, params: { num_timesteps: steps, seed } })
       .then(setEstimate)
       .catch((e) => setErr(errorMessage(e)));
     setErr(null);
-  }, [photoId, garmentId, provider, steps, seed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoId, garmentKey, provider, steps, seed]);
 
   // poll the job
   useEffect(() => {
@@ -121,14 +193,14 @@ function StudioInner() {
   }, [job, mutateResults, mutateProv]);
 
   async function run(newSeed?: number) {
-    if (!photoId || !garmentId) return;
+    if (!photoId || !garmentIds.length) return;
     setErr(null);
     const s = newSeed ?? seed;
     if (newSeed != null) setSeed(newSeed);
     try {
       const j = await api.post<Job>("/api/tryon/jobs", {
         person_photo_id: photoId,
-        garment_id: garmentId,
+        garment_ids: garmentIds,
         provider,
         params: { num_timesteps: steps, seed: s },
         approve_paid: approve,
@@ -144,6 +216,10 @@ function StudioInner() {
     }
   }
 
+  function toggleGarment(id: string) {
+    if (!garmentIds.includes(id) && garmentIds.length < MAX_GARMENTS) setFocusedId(id);
+    setGarmentIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : ids.length < MAX_GARMENTS ? [...ids, id] : ids));
+  }
   async function toggleSave(r: TryOnResult) {
     const u = await api.patch<TryOnResult>(`/api/tryon/results/${r.id}`, { saved: !r.saved });
     setCurrent(u);
@@ -168,7 +244,7 @@ function StudioInner() {
   return (
     <div>
       <PageHeader eyebrow="Virtual try-on studio" title="See it on you">
-        One garment at a time, on your own photo. Results keep your body and face as they are — the model only changes the clothes.
+        Try one garment, or layer up to 4, on your own photo. Results keep your body and face as they are — the model only changes the clothes.
       </PageHeader>
 
       {prov && !realAvailable && (
@@ -214,18 +290,23 @@ function StudioInner() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card id="garment-picker">
             <CardHeader><CardTitle className="text-lg">2 · Garment</CardTitle></CardHeader>
             <CardContent>
+              {topsOnly && (
+                <p className="mb-3 text-xs text-muted">
+                  Showing tops only. <button onClick={() => setTopsOnly(false)} className="underline">Show everything</button>
+                </p>
+              )}
               {outfitIds.length > 1 && (
                 <p className="mb-3 text-xs text-muted">
-                  From your outfit: the try-on model dresses one garment per run. Pick the piece to try; layering several pieces in sequence is
-                  not guaranteed to keep earlier ones intact.
+                  From your outfit: pieces are tried on one after the other (bottoms, then tops, then outerwear), so earlier pieces may change slightly.
+                  Pick one per category, up to {MAX_GARMENTS}.
                 </p>
               )}
               <div className="grid max-h-72 grid-cols-4 gap-2 overflow-y-auto">
-                {(outfitIds.length > 1 ? tryable.filter((g) => outfitIds.includes(g.id)) : tryable).map((g) => (
-                  <button key={g.id} onClick={() => setGarmentId(g.id)} title={garmentTitle(g)} className={cn("aspect-square overflow-hidden rounded-xl border-2 bg-white", g.id === garmentId ? "border-burgundy" : "border-line")}>
+                {(outfitIds.length > 1 ? tryable.filter((g) => outfitIds.includes(g.id)) : tryable).filter((g) => !topsOnly || g.category === "top").map((g) => (
+                  <button key={g.id} aria-pressed={garmentIds.includes(g.id)} onClick={() => toggleGarment(g.id)} title={garmentTitle(g)} className={cn("aspect-square overflow-hidden rounded-xl border-2 bg-white", garmentIds.includes(g.id) ? "border-burgundy" : "border-line")}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={g.thumb_url} alt={garmentTitle(g)} className="h-full w-full object-contain p-1" />
                   </button>
@@ -293,7 +374,7 @@ function StudioInner() {
             </div>
           )}
           {err && <Notice tone="error">{err}</Notice>}
-          <Button size="lg" className="w-full" onClick={() => run()} disabled={!photoId || !garmentId || !!running || (estimate?.paid && !approve)}>
+          <Button size="lg" className="w-full" onClick={() => run()} disabled={!photoId || !garmentIds.length || !!running || (estimate?.paid && !approve)}>
             {running ? <Loader2 className="animate-spin" /> : <WandSparkles />}
             {running ? (job?.status === "queued" ? "Queued…" : "Generating…") : provider === "mock" ? "Run mock preview" : "Try it on"}
           </Button>
@@ -304,6 +385,7 @@ function StudioInner() {
         </div>
 
         <div className="space-y-6">
+          {focused && <GarmentPreview g={focused} picks={picks} focusId={focused.id} onFocus={setFocusedId} compact={!!current} />}
           {!photo ? (
             <EmptyState title="Start with a photo" action={<Button onClick={() => setConsentOpen(true)}>Add your photo</Button>}>
               Your photo stays on this device. You can delete it, and every image made from it, at any time.
@@ -326,7 +408,27 @@ function StudioInner() {
                   <p>via {label(current.provider)} · {label(current.fidelity)}</p>
                   {job?.result?.elapsed_seconds != null && job.result.result_id === current.id && <p>{Number(job.result.elapsed_seconds).toFixed(1)} s · {usd(Number(job.result.estimated_cost_usd ?? 0))}</p>}
                   {job?.cache_hit && <p>Reused a previous identical result (free).</p>}
+                  {job?.result?.fidelity_mode != null && job.result.result_id === current.id && (
+                    <p title={String(job.result.fidelity_reason ?? "")}>
+                      {job.result.fidelity_mode === "layered" ? "Only the garment changed, the rest is your original photo." : "Whole image regenerated (layered mode unavailable)."}
+                    </p>
+                  )}
                 </div>
+                {job?.result?.uncovered_area === true && job.result.result_id === current.id && (
+                  <div className="rounded-2xl border border-line bg-white p-3 text-xs text-muted">
+                    <p className="mb-2">This jacket is shorter than the one in your photo, so the uncovered area is imagined. Add a top to control it.</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setTopsOnly(true);
+                        document.getElementById("garment-picker")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                    >
+                      Choose a top
+                    </Button>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant={current.saved ? "subtle" : "outline"} onClick={() => toggleSave(current)}><Bookmark className={cn(current.saved && "fill-current")} /> {current.saved ? "Saved" : "Save"}</Button>
                   <Button size="sm" variant="outline" asChild><a href={`${current.image_url}?download=true`}><Download /> Download</a></Button>
@@ -344,6 +446,15 @@ function StudioInner() {
               <div className="grid place-items-center rounded-3xl border border-dashed border-line p-6 text-center text-sm text-muted">
                 {running ? <Loader2 className="size-8 animate-spin" /> : garment ? `Ready to try ${garmentTitle(garment)}.` : "Pick a garment."}
                 {selectedProvider && !selectedProvider.available && <p className="mt-2 text-xs">{selectedProvider.reason}</p>}
+              </div>
+            </div>
+          )}
+
+          {current && recs.length > 0 && (
+            <div>
+              <p className="eyebrow mb-3">Outfits with this piece</p>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {recs.map((o, i) => <OutfitCard key={o.garment_ids.join(",")} outfit={o} rank={i + 1} />)}
               </div>
             </div>
           )}

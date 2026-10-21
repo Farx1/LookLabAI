@@ -23,6 +23,7 @@ from ..spending import authorize, effective_limit, month_spend
 from .photos import PRIVATE_CACHE
 
 router = APIRouter(prefix="/api", tags=["tryon"])
+MAX_GARMENTS = 4
 
 
 class TryOnParams(BaseModel):
@@ -34,7 +35,8 @@ class TryOnParams(BaseModel):
 
 class TryOnBody(BaseModel):
     person_photo_id: str
-    garment_id: str
+    garment_id: str | None = None  # single garment (kept for compatibility); use garment_ids for layering
+    garment_ids: list[str] = Field(default_factory=list, max_length=MAX_GARMENTS)
     provider: str = "auto"
     category: Literal["tops", "bottoms", "one-pieces"] | None = None
     garment_photo_type: Literal["flat-lay", "model"] | None = None
@@ -49,41 +51,60 @@ def provider_error(e: ProviderError) -> JSONResponse:
 
 
 def _prepare(db, ctx, user, body: TryOnBody):
+    if body.garment_id and body.garment_ids:
+        raise HTTPException(422, "send garment_id or garment_ids, not both")
+    ids = list(dict.fromkeys(body.garment_ids or ([body.garment_id] if body.garment_id else [])))
+    if not ids:
+        raise HTTPException(422, "garment_id or garment_ids required")
     photo = db.get(PersonPhoto, body.person_photo_id)
-    garment = db.get(Garment, body.garment_id)
     if photo is None or photo.user_id != user.id:
         raise HTTPException(404, "photo not found")
-    if garment is None or garment.user_id != user.id:
+    garments = [db.get(Garment, i) for i in ids]
+    if any(g is None or g.user_id != user.id for g in garments):
         raise HTTPException(404, "garment not found")
     if photo.quality and not photo.quality.get("ok", True):
         raise HTTPException(422, {"code": "photo_unsuitable", "issues": photo.quality.get("issues", [])})
-    category = body.category or tx.TRYON_CATEGORY.get(garment.category)
-    if category is None:
-        raise HTTPException(
-            422,
-            {
-                "code": "category_unsupported",
-                "message": f"Try-on supports tops, bottoms and one-pieces; this garment is '{garment.category}'. Set its category first.",
-            },
-        )
+    for g in garments:
+        if g.category not in tx.TRYON_CATEGORY and not (len(garments) == 1 and body.category):  # explicit category overrides a single garment's
+            raise HTTPException(
+                422,
+                {
+                    "code": "category_unsupported",
+                    "message": f"Try-on supports tops, bottoms and one-pieces; this garment is '{g.category}'. Set its category first.",
+                },
+            )
+    if len({g.category for g in garments}) < len(garments):
+        raise HTTPException(422, {"code": "duplicate_layer", "message": "Pick at most one garment per category."})
+    garments.sort(key=lambda g: tx.TRYON_LAYER.get(g.category, 0))
     provider = ctx.registry.resolve_tryon(body.provider)
-    photo_type = body.garment_photo_type or garment.garment_photo_type or "flat-lay"
+    steps = []
+    for g in garments:
+        # an explicit category only applies to a single garment; layering derives it per garment
+        category = (body.category if len(garments) == 1 else None) or tx.TRYON_CATEGORY[g.category]
+        photo_type = body.garment_photo_type or g.garment_photo_type or "flat-lay"
+        steps.append({"garment_id": g.id, "category": category, "garment_photo_type": photo_type, "garment_kind": g.category})
     if provider.info.name == "local_fashn":
-        try:
-            ctx.registry.fashn_runtime.validate(photo_type)
-        except ValueError as e:
-            raise HTTPException(422, {"code": "parser_required", "message": str(e)}) from e
+        for photo_type in {s["garment_photo_type"] for s in steps}:
+            try:
+                ctx.registry.fashn_runtime.validate(photo_type)
+            except ValueError as e:
+                raise HTTPException(422, {"code": "parser_required", "message": str(e)}) from e
     req = TryOnRequest(
-        person_image_path="", garment_image_path="", category=category, garment_photo_type=photo_type, **body.params.model_dump()
+        person_image_path="",
+        garment_image_path="",
+        category=steps[0]["category"],
+        garment_photo_type=steps[0]["garment_photo_type"],
+        **body.params.model_dump(),
     )
-    estimate = provider.estimate_cost_usd(req)
-    return photo, garment, provider, req, estimate
+    estimate = provider.estimate_cost_usd(req) * len(steps)
+    return photo, garments, provider, req, estimate, steps
 
 
 @router.get("/tryon/providers")
 def providers(ctx=Depends(get_ctx), db=Depends(get_db), user=Depends(current_user)):
     return {
         "providers": ctx.registry.tryon_status(),
+        "layered": ctx.registry.layer_status(),
         "spending": {
             "month_spend_usd": round(month_spend(db, user.id), 4),
             "effective_limit_usd": effective_limit(ctx.policy.spending.monthly_limit_usd, user),
@@ -96,7 +117,7 @@ def providers(ctx=Depends(get_ctx), db=Depends(get_db), user=Depends(current_use
 @router.post("/tryon/estimate")
 def estimate(body: TryOnBody, ctx=Depends(get_ctx), db=Depends(get_db), user=Depends(current_user)):
     try:
-        _, _, provider, req, est = _prepare(db, ctx, user, body)
+        _, _, provider, req, est, _ = _prepare(db, ctx, user, body)
     except ProviderError as e:
         return provider_error(e)
     return {
@@ -114,10 +135,10 @@ def estimate(body: TryOnBody, ctx=Depends(get_ctx), db=Depends(get_db), user=Dep
 @router.post("/tryon/jobs")
 def create_job(body: TryOnBody, ctx=Depends(get_ctx), db=Depends(get_db), user=Depends(current_user)):
     try:
-        photo, garment, provider, req, est = _prepare(db, ctx, user, body)
+        photo, garments, provider, req, est, steps = _prepare(db, ctx, user, body)
         params = req.params()
         dedup = hashlib.sha256(
-            json.dumps([provider.info.name, provider.info.model, photo.sha256, garment.sha256, params], sort_keys=True).encode()
+            json.dumps(["layered-v1", provider.info.name, provider.info.model, photo.sha256, *(g.sha256 for g in garments), params], sort_keys=True).encode()
         ).hexdigest()
         if not body.force_new:
             # identical inputs + parameters: reuse the stored result at no cost
@@ -125,7 +146,7 @@ def create_job(body: TryOnBody, ctx=Depends(get_ctx), db=Depends(get_db), user=D
             if cached is not None:
                 job = Job(
                     user_id=user.id, kind="tryon", status="succeeded", provider=provider.info.name, dedup_key=dedup,
-                    payload={"person_photo_id": photo.id, "garment_id": garment.id, "provider": provider.info.name, "params": params},
+                    payload={"person_photo_id": photo.id, "steps": steps, "provider": provider.info.name, "params": params},
                     result={"result_id": cached.id, "cache_hit": True, "provider": cached.provider, "model": cached.model,
                             "is_mock": cached.is_mock, "estimated_cost_usd": 0.0},
                 )  # fmt: skip
@@ -168,7 +189,7 @@ def create_job(body: TryOnBody, ctx=Depends(get_ctx), db=Depends(get_db), user=D
         dedup_key=dedup,
         payload={
             "person_photo_id": photo.id,
-            "garment_id": garment.id,
+            "steps": steps,
             "provider": provider.info.name,
             "params": params,
             "dedup_key": dedup,

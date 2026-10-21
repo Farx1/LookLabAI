@@ -94,6 +94,7 @@ def garment_brief(g: Garment) -> dict:
         "category": g.category,
         "subcategory": g.subcategory,
         "colors": g.colors,
+        "brand": g.brand,
         "price": g.price,
         "currency": g.currency,
         "is_owned": g.is_owned,

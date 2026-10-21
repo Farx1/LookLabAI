@@ -118,6 +118,7 @@ class Settings(BaseSettings):
     # models
     fashn_weights_dir: Path = REPO_ROOT / "weights" / "fashn-vton-1.5"
     fashn_parser_mode: Literal["parser_free", "full"] = "parser_free"
+    sam2_weights: Path = REPO_ROOT / "weights" / "sam2" / "sam2.1_hiera_small.pt"  # layered try-on, Apache-2.0
     fashn_allow_cpu: bool = False
     fashn_idle_unload_seconds: int = 600
     ollama_url: str = "http://127.0.0.1:11434"

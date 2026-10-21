@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Requires a running stack seeded with scripts/seed_demo.py --with-person.
+// Requires a running stack with a wardrobe and at least one person photo. No garment name is assumed.
 const SHOTS = process.env.E2E_SCREENSHOTS;
 
 async function shot(page: import("@playwright/test").Page, name: string, project: string) {
@@ -14,9 +14,11 @@ test("principal use case: wardrobe → 15 outfits → save → stylist follow-up
   await shot(page, "dashboard", p);
 
   await page.goto("/wardrobe");
-  await expect(page.getByText("cream relaxed blouse")).toBeVisible();
+  await page.waitForLoadState("networkidle"); // dev server: click only once hydrated
+  const firstPiece = page.getByRole("button", { name: /^Open / }).first();
+  await expect(firstPiece).toBeVisible();
   await shot(page, "wardrobe", p);
-  await page.getByRole("button", { name: "Open cream relaxed blouse" }).click();
+  await firstPiece.click();
   await expect(page.getByRole("dialog")).toContainText("Your edits always win");
   await shot(page, "garment-editor", p);
   await page.keyboard.press("Escape");
@@ -31,11 +33,15 @@ test("principal use case: wardrobe → 15 outfits → save → stylist follow-up
   await expect(page.locator("article img").first()).toHaveJSProperty("complete", true);
   await page.waitForTimeout(800);
   await shot(page, "outfits", p);
+  await expect(page.locator("article").first().getByRole("link", { name: /Try on/ })).toHaveAttribute("href", /garments=[^&,]+,[^&]+&/);
   await page.locator("article").first().getByRole("button", { name: "Save" }).click();
   await expect(page.locator("article").first().getByRole("button", { name: "Saved" })).toBeVisible();
+  await page.locator("article").first().getByRole("button", { name: "Variations" }).click();
+  await expect(page.getByRole("region", { name: "Variations" }).first().locator("article").first()).toBeVisible();
 
   await page.goto("/stylist");
   await page.getByRole("button", { name: "New conversation" }).filter({ visible: true }).first().click();
+  await page.waitForLoadState("networkidle"); // let the session list settle before typing
   const box = page.getByPlaceholder(/Keep the same shoes/);
   await box.fill("5 romantic outfits for a date, neutral colors, budget €100");
   await box.press("Enter");
@@ -47,11 +53,14 @@ test("principal use case: wardrobe → 15 outfits → save → stylist follow-up
   await shot(page, "stylist", p);
 
   await page.goto("/studio");
-  await expect(page.getByText(/labelled mock preview/)).toBeVisible();
-  await page.getByTitle("cream relaxed blouse").click();
-  await page.getByRole("button", { name: /Run mock preview/ }).click();
-  await expect(page.getByRole("slider", { name: /Compare/ })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText("Mock — no model run")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "See it on you" })).toBeVisible();
+  await page.locator("button[title][aria-pressed=false]").first().click();
+  const mock = page.getByRole("button", { name: /Run mock preview/ }); // only when no real engine is available
+  if (await mock.isVisible()) {
+    await mock.click();
+    await expect(page.getByRole("slider", { name: /Compare/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Mock — no model run")).toBeVisible();
+  }
   await shot(page, "studio", p);
 
   await page.goto("/saved");

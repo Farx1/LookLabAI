@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, SlidersHorizontal, Sparkles } from "lucide-react";
-import type { RecommendationResponse } from "@looklab/shared-types";
+import { Loader2, Shuffle, SlidersHorizontal, Sparkles } from "lucide-react";
+import type { RecommendationResponse, SurpriseResponse } from "@looklab/shared-types";
 import { Badge, Button, Input, Label, Select, Switch, Textarea, cn } from "@looklab/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useVocabulary } from "@/lib/hooks";
@@ -39,6 +39,7 @@ export default function OutfitsPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [res, setRes] = useState<RecommendationResponse | null>(null);
+  const [surprise, setSurprise] = useState<SurpriseResponse | null>(null);
 
   async function generate() {
     setBusy(true);
@@ -60,6 +61,21 @@ export default function OutfitsPage() {
         count: advanced ? count : null,
       });
       setRes(r);
+      setSurprise(null);
+    } catch (e) {
+      setErr(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function surpriseMe() {
+    setBusy(true);
+    setErr(null);
+    try {
+      // no seed sent: the server draws a fresh one, so "Again" always differs
+      setSurprise(await api.post<SurpriseResponse>("/api/outfits/surprise", { count: 1 }));
+      setRes(null);
     } catch (e) {
       setErr(errorMessage(e));
     } finally {
@@ -140,17 +156,44 @@ export default function OutfitsPage() {
             </div>
           </div>
         )}
-        <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" size="sm" onClick={() => setAdvanced((v) => !v)}>
             <SlidersHorizontal /> {advanced ? "Hide filters" : "Filters"}
           </Button>
-          <Button size="lg" onClick={generate} disabled={busy || (!prompt.trim() && !advanced)}>
-            {busy ? <Loader2 className="animate-spin" /> : <Sparkles />} Generate looks
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="lg" variant="outline" onClick={surpriseMe} disabled={busy} aria-busy={busy} aria-label="Surprise me: a new outfit from clothes you own">
+              {busy ? <Loader2 className="animate-spin" /> : <Shuffle />} Surprise me
+            </Button>
+            <Button size="lg" onClick={generate} disabled={busy || (!prompt.trim() && !advanced)} aria-busy={busy}>
+              {busy ? <Loader2 className="animate-spin" /> : <Sparkles />} Generate looks
+            </Button>
+          </div>
         </div>
       </div>
 
       {err && <div className="mb-6"><Notice tone="error">{err}</Notice></div>}
+
+      {surprise && (
+        <div className="mb-8 space-y-6" aria-live="polite">
+          <Notice>
+            <span className="font-medium">Trend FW26: {surprise.trend.nom}.</span> {surprise.trend.description}{" "}
+            {surprise.trend.sources.slice(0, 3).map((u, i) => (
+              <a key={u} href={u} target="_blank" rel="noreferrer" className="underline">
+                {i > 0 && ", "}source {i + 1}
+              </a>
+            ))}
+          </Notice>
+          {surprise.history_reset && <Notice tone="warning">You have seen every combination: history reset.</Notice>}
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {surprise.outfits.map((o, i) => (
+              <OutfitCard key={o.garment_ids.join()} outfit={o} rank={i + 1} occasion={surprise.constraints.occasion} constraints={surprise.constraints} />
+            ))}
+          </div>
+          <Button variant="outline" onClick={surpriseMe} disabled={busy} aria-busy={busy}>
+            {busy ? <Loader2 className="animate-spin" /> : <Shuffle />} Again
+          </Button>
+        </div>
+      )}
 
       {res && (
         <div className="space-y-6">

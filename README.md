@@ -64,6 +64,7 @@ pnpm test:e2e                          # Playwright (stack running + seed_demo.p
 ## Status and limitations (honest)
 
 * Real FASHN inference has **not yet been run** by this project: the development sandbox had no GPU and could not reach Hugging Face. CPU cost was measured on the real architecture (≈97 s/step ⇒ ≈48 min/image), which is why CPU try-on is off. VRAM/latency on GPUs are to be measured with the provided GPU test.
+* **Outfit analysis** (page `/analyze`): photo to detected pieces to top-3 wardrobe matches, with brand, price and link. Measured on 2026-10-20 with `qwen3-vl:2b` on an RTX 3070 Laptop, on 1 photo for timing and VRAM: 3 to 11 s, 3.4 GB VRAM; matching on 6 flat-lay collages (folder `looklab-wardrobe-test`, outside the repo, built from wardrobe product images) gave the exact piece first for 14 of 18 pieces and in the top 3 for 18 of 18. The 2B model still invents or duplicates items on busy photos. The photo is deleted as soon as the analysis ends.
 * Qwen3-VL and Florence-2 adapters are implemented but **not benchmarked** for the same reason; deterministic CV analysis is measured.
 * Commercial use is **not cleared** — see [LICENSE_AUDIT.md](LICENSE_AUDIT.md) (human-parser license, undisclosed training data).
 * Sequential multi-garment try-on and Qwen-Image-Edit creative mode are not enabled until benchmarked.

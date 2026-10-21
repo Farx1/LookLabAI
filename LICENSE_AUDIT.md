@@ -37,7 +37,10 @@ Legend: ✅ verified from the license text or source in the pinned repository ·
 
 | Model | Use | License | Notes |
 |---|---|---|---|
-| Qwen3-VL-2B-Instruct (Ollama `qwen3-vl:2b`) | garment metadata | Apache-2.0 ☑️ | runs locally; outputs are validated against the taxonomy |
+| Qwen3-VL-2B-Instruct (Ollama `qwen3-vl:2b`) | garment metadata; lists worn items and boxes for the layered try-on | Apache-2.0 ☑️ | runs locally; outputs are validated against the taxonomy |
+| SAM 2.1 Hiera-small (`sam2.1_hiera_small.pt`) and `sam2` 1.1.0 code | cuts garments and accessories out of the person photo (layered try-on) | Apache-2.0 ☑️ (code and weights, Meta release) | runs locally; weights are downloaded from `dl.fbaipublicfiles.com` by `infrastructure/gpu-worker/fetch_weights.py`. The package bundles an optional `cc_torch` connected-components helper under BSD-3-Clause (`LICENSE_cctorch`). |
+| hydra-core 1.3.7, iopath 0.1.10 (SAM2 dependencies) | config loading, file IO | MIT | |
+| omegaconf 2.3 to 2.4, antlr4-python3-runtime 4.9.3, portalocker 4.4.1 (SAM2 dependencies) | config parsing, file locks | BSD-3-Clause (omegaconf and portalocker), BSD (antlr4) | |
 | Florence-2-base | captions → metadata | MIT ☑️ | `trust_remote_code=True` executes model-repo code: pin a revision in production |
 | Qwen3 1.7B (optional reply phrasing) | text | Apache-2.0 ☑️ | off by default |
 | Qwen-Image-Edit-2509 | creative full-outfit edits | Apache-2.0 ☑️ (re-verify on the model card) | disabled; generative, not a fitting tool |

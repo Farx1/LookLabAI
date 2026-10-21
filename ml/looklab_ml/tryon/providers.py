@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import io
+import logging
 import os
 import time
 from dataclasses import dataclass
@@ -33,6 +34,9 @@ from .base import (
     TryOnResult,
 )
 from .fashn_runtime import FashnRuntime
+from .layers import LayerPlanner
+
+log = logging.getLogger(__name__)
 
 
 def _load_rgb(path: str) -> Image.Image:
@@ -114,6 +118,10 @@ class MockTryOnProvider:
 
 
 # ----------------------------------------------------------------- local FASHN
+# shortcut: fixed share of the old outer layer left bare by the new one (0.16 for a waist-length biker over a hip-length puffer), tune on more photos
+UNCOVERED_RATIO = 0.10
+
+
 class LocalFashnProvider:
     info = ProviderInfo(
         name="local_fashn",
@@ -126,11 +134,18 @@ class LocalFashnProvider:
         description="FASHN VTON v1.5 on this machine's NVIDIA GPU. Images never leave the machine.",
     )
 
-    def __init__(self, runtime: FashnRuntime):
+    def __init__(self, runtime: FashnRuntime, planner: LayerPlanner | None = None):
         self.runtime = runtime
+        self.planner = planner
 
     def available(self) -> tuple[bool, str]:
         return self.runtime.available()
+
+    def layer_status(self) -> dict:
+        """Availability of the layered-mode models. Local only: Ollama is never started from here."""
+        if self.planner is None:
+            return {}
+        return {k: {"available": ok, "reason": why} for k, (ok, why) in self.planner.available().items()}
 
     def estimate_cost_usd(self, request: TryOnRequest) -> float:
         return 0.0
@@ -141,8 +156,25 @@ class LocalFashnProvider:
             raise ProviderUnavailable(why)
         if should_cancel and should_cancel():
             raise CancelledError()
-        person = _load_rgb(request.person_image_path)
-        garment = _load_rgb(request.garment_image_path)
+        t0 = time.perf_counter()
+        person = await asyncio.to_thread(_load_rgb, request.person_image_path)  # decode / PNG encode of a 3 MP photo would stall the event loop
+        garment = await asyncio.to_thread(_load_rgb, request.garment_image_path)
+        plan, reason, stages = None, "layered mode not configured", {}
+        if self.planner is not None:
+            down = [f"{k}: {why}" for k, (ok, why) in self.planner.available().items() if not ok]
+            reason = "; ".join(down)
+            if not down:
+                try:
+                    # Qwen (3 GB) + SAM2 + FASHN (5.5 GB) exceed 8 GB: FASHN leaves the GPU while they run
+                    # ponytail: FASHN is reloaded (~10 s) per step. Measured 2026-10-20: FASHN 5.6 GB + Qwen 3.4 GB > 8.2 GB, so Qwen cannot stay beside it; upgrade = a bigger card.
+                    await asyncio.to_thread(self.runtime.unload)
+                    plan = await asyncio.to_thread(self.planner.plan, person, request.garment_kind, request.over_top)
+                    stages.update(qwen=plan.seconds["qwen"], sam2=plan.seconds["sam2"])
+                except Exception as e:  # noqa: BLE001 - never fail the try-on because the optional layer step failed
+                    log.exception("layered planning failed; falling back to segfree")
+                    reason = f"layered mode failed: {type(e).__name__}: {e}"
+        if should_cancel and should_cancel():
+            raise CancelledError()
         images, m = await asyncio.to_thread(
             self.runtime.run,
             person,
@@ -153,19 +185,40 @@ class LocalFashnProvider:
             request.guidance_scale,
             request.seed,
             request.num_samples,
+            True,
+            plan.label_map if plan else None,
         )
+        stages["fashn"] = m.elapsed_seconds
+        out, mode, uncovered, edit_fraction, notes = images[0], "segfree", False, None, []
+        if plan:
+            try:
+                out, info = await asyncio.to_thread(self.planner.finish, person, out, plan, m.ca_mask)
+                mode, edit_fraction = "layered", info["edit_fraction"]
+                reason = "garment layer repainted, everything else is the original photo"
+                uncovered = request.garment_kind == "outerwear" and info["uncovered_ratio"] > UNCOVERED_RATIO
+                stages["sam2"] += info["sam2"]
+                stages["recompose"] = info["recompose"]
+                notes += [f"outside_mask_max_diff={info['outside_mask_max_diff']}", f"uncovered_ratio={info['uncovered_ratio']:.2f}"]
+            except Exception as e:  # noqa: BLE001 - keep the raw FASHN output
+                log.exception("layered recomposition failed; raw FASHN output kept")
+                reason = f"recomposition failed, raw output kept: {type(e).__name__}: {e}"
         os.makedirs(os.path.dirname(request.output_path) or ".", exist_ok=True)
-        images[0].save(request.output_path, format="PNG")
+        await asyncio.to_thread(out.save, request.output_path, format="PNG")
         return TryOnResult(
             output_image_path=request.output_path,
             provider=self.info.name,
             model=self.info.model,
-            elapsed_seconds=m.elapsed_seconds,
+            elapsed_seconds=time.perf_counter() - t0 if plan else m.elapsed_seconds,
             estimated_cost_usd=0.0,
             device=m.device,
             gpu_memory_peak_mb=m.gpu_memory_peak_mb,
             model_load_seconds=m.model_load_seconds,
-            notes=[f"parser_mode={self.runtime.parser_mode}", f"dtype={m.dtype}"],
+            notes=[f"parser_mode={self.runtime.parser_mode}", f"dtype={m.dtype}", f"fidelity_mode={mode}", *notes],
+            fidelity_mode=mode,
+            fidelity_reason=reason,
+            uncovered_area=uncovered,
+            stage_seconds={k: round(v, 2) for k, v in stages.items()},
+            edit_fraction=edit_fraction,
         )
 
 

@@ -32,6 +32,13 @@ log = logging.getLogger(__name__)
 
 ParserMode = Literal["parser_free", "full"]
 
+# Label ids of the FASHN parser interface. The layered mode paints its own label map with them.
+PARSER_LABELS = [
+    "background", "face", "hair", "top", "dress", "skirt", "pants", "belt", "bag",
+    "hat", "scarf", "glasses", "arms", "hands", "legs", "feet", "torso", "jewelry",
+]  # fmt: skip
+LABEL_IDS = {v: k for k, v in enumerate(PARSER_LABELS)}
+
 
 def _install_parser_interface_shim() -> None:
     """Register a minimal ``fashn_human_parser`` module when the real package
@@ -40,19 +47,16 @@ def _install_parser_interface_shim() -> None:
     if "fashn_human_parser" in sys.modules or importlib.util.find_spec("fashn_human_parser") is not None:
         return
     mod = types.ModuleType("fashn_human_parser")
-    labels = [
-        "background", "face", "hair", "top", "dress", "skirt", "pants", "belt", "bag",
-        "hat", "scarf", "glasses", "arms", "hands", "legs", "feet", "torso", "jewelry",
-    ]  # fmt: skip
-    mod.IDS_TO_LABELS = dict(enumerate(labels))
-    mod.LABELS_TO_IDS = {v: k for k, v in mod.IDS_TO_LABELS.items()}
+    mod.IDS_TO_LABELS = dict(enumerate(PARSER_LABELS))
+    mod.LABELS_TO_IDS = dict(LABEL_IDS)
     mod.CATEGORY_TO_BODY_COVERAGE = {"tops": "upper", "bottoms": "lower", "one-pieces": "full"}
     mod.BODY_COVERAGE_TO_LABELS = {
-        "upper": ["top", "dress", "scarf"],
+        "upper": ["top", "dress"],
         "lower": ["skirt", "pants", "belt"],
-        "full": ["top", "dress", "scarf", "skirt", "pants", "belt"],
+        "full": ["top", "dress", "skirt", "pants", "belt"],
     }
-    mod.IDENTITY_LABELS = ["face", "hair", "jewelry", "bag", "glasses", "hat"]
+    # scarf is kept (identity), not erased: the layered mode must preserve it
+    mod.IDENTITY_LABELS = ["face", "hair", "jewelry", "bag", "glasses", "hat", "scarf"]
 
     class FashnHumanParser:  # noqa: D401 - placeholder that must never run
         def __init__(self, *a, **k):
@@ -64,13 +68,22 @@ def _install_parser_interface_shim() -> None:
 
 
 class _DiscardedParser:
-    """Stands in for the human parser in parser-free mode. Its output is only
-    consumed by masking steps that parser-free mode disables."""
+    """Stands in for the human parser in parser-free mode. Without a label map its
+    output is only consumed by masking steps that parser-free mode disables. With
+    ``label_map`` (made by ``tryon.layers`` from Apache-2.0 models) the first call,
+    the person image, returns that map; the garment call returns zeros as before."""
+
+    label_map = None
 
     def predict(self, image_np):
+        import cv2
         import numpy as np
 
-        return np.zeros(image_np.shape[:2], dtype=np.uint8)
+        lm, self.label_map = self.label_map, None
+        if lm is None:
+            return np.zeros(image_np.shape[:2], dtype=np.uint8)
+        h, w = image_np.shape[:2]
+        return cv2.resize(lm, (w, h), interpolation=cv2.INTER_NEAREST)
 
 
 @dataclass
@@ -80,6 +93,7 @@ class RunMetrics:
     gpu_memory_peak_mb: float | None
     device: str
     dtype: str
+    ca_mask: object = None  # bool array at label_map size: where FASHN repaints (layered mode only)
 
 
 class FashnRuntime:
@@ -193,8 +207,8 @@ class FashnRuntime:
         return False
 
     # ------------------------------------------------------------- inference
-    def validate(self, garment_photo_type: str, segmentation_free: bool = True) -> None:
-        if self.parser_mode == "parser_free" and (garment_photo_type != "flat-lay" or not segmentation_free):
+    def validate(self, garment_photo_type: str, segmentation_free: bool = True, has_label_map: bool = False) -> None:
+        if self.parser_mode == "parser_free" and (garment_photo_type != "flat-lay" or not (segmentation_free or has_label_map)):
             raise ValueError(
                 "parser_free mode supports flat-lay garment photos with segmentation_free=True only. "
                 "Garments photographed on a person need the FASHN Human Parser, which is licensed for "
@@ -212,13 +226,21 @@ class FashnRuntime:
         seed: int = 42,
         num_samples: int = 1,
         segmentation_free: bool = True,
+        label_map=None,
     ) -> tuple[list[Image.Image], RunMetrics]:
-        self.validate(garment_photo_type, segmentation_free)
+        """``label_map``: uint8 array (person size) of PARSER_LABELS ids. It replaces the parser and
+        turns masking on, so only the labelled garment is repainted."""
+        self.validate(garment_photo_type, segmentation_free, label_map is not None)
         with self._lock:
             load_s = self._load()
             import torch
 
             pipe = self._pipeline
+            ca_mask = None
+            if label_map is not None:
+                segmentation_free = False
+                pipe.hp_model.label_map = label_map
+                ca_mask = self._ca_mask(label_map, category)
             is_cuda = pipe.device.type == "cuda"
             if is_cuda:
                 torch.cuda.reset_peak_memory_stats()
@@ -246,4 +268,22 @@ class FashnRuntime:
                 gpu_memory_peak_mb=peak,
                 device=str(pipe.device),
                 dtype=str(pipe.inference_dtype),
+                ca_mask=ca_mask,
             )
+
+    @staticmethod
+    def _ca_mask(label_map, category: str):
+        """Region the pipeline will repaint: same function as the pipeline, run on the label map at
+        the 864 px baseline height (parameters scale with height) and scaled back."""
+        import cv2
+        import numpy as np
+
+        hp = sys.modules["fashn_human_parser"]
+        from fashn_vton.preprocessing.agnostic import create_clothing_agnostic_image
+
+        h, w = label_map.shape
+        small = cv2.resize(label_map, (round(w * 864 / h), 864), interpolation=cv2.INTER_NEAREST)
+        coverage = hp.CATEGORY_TO_BODY_COVERAGE[category]
+        ids = [hp.LABELS_TO_IDS[x] for x in hp.BODY_COVERAGE_TO_LABELS[coverage]]
+        ca = create_clothing_agnostic_image(np.zeros((*small.shape, 3), np.uint8), small, ids, coverage, mask_value=255)[..., 0] > 0
+        return cv2.resize(ca.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST) > 0

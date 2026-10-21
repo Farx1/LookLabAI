@@ -15,6 +15,7 @@ guesses and user-supplied values.
 from __future__ import annotations
 
 import base64
+import importlib.util
 import io
 import json
 import logging
@@ -99,7 +100,7 @@ class CVBasicAnalyzer:
 VLM_PROMPT = (
     "You are a fashion cataloguing assistant. Look at the garment in the image and "
     "describe ONLY what is visible. If a property cannot be determined from the image, "
-    'answer "unknown". Respond with JSON matching the schema.\n'
+    'answer "unknown". Respond with one JSON object using these keys.\n'
     f"category: one of {list(tx.CATEGORIES)}\n"
     "subcategory: short noun such as 'blouse', 'wide-leg trousers', 'midi skirt'\n"
     f"colors: up to 3 from {sorted(PALETTE)}\n"
@@ -111,24 +112,6 @@ VLM_PROMPT = (
     "details: up to 5 short visible details (e.g. 'puff sleeves', 'pleated', 'v-neck')\n"
     "description: one neutral sentence."
 )
-
-VLM_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "category": {"type": "string"},
-        "subcategory": {"type": "string"},
-        "colors": {"type": "array", "items": {"type": "string"}},
-        "pattern": {"type": "string"},
-        "fit": {"type": "string"},
-        "style": {"type": "array", "items": {"type": "string"}},
-        "season": {"type": "array", "items": {"type": "string"}},
-        "formality": {"type": "integer"},
-        "details": {"type": "array", "items": {"type": "string"}},
-        "description": {"type": "string"},
-    },
-    "required": ["category", "colors", "pattern", "fit", "style", "formality", "description"],
-}
-
 
 def validate_vlm_output(data: dict, source: str, confidence: float = 0.6) -> tuple[dict[str, Attr], str | None]:
     """Clamp free-form model output to the taxonomy. Unknowns are omitted."""
@@ -173,6 +156,29 @@ def _image_b64(image: Image.Image, max_side: int = 768) -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
+def ollama_chat(
+    base_url: str, model: str, prompt: str, image_b64: str, prefill: str, timeout: float, num_predict: int = 1000, keep_alive: str | int | None = None
+) -> str:
+    """One Qwen3-VL turn on Ollama. The model "thinks" and Ollama 0.13 ignores think=false, so some
+    images loop until the timeout. Prefilling an empty think block plus the start of the JSON answer
+    skips the thinking; the prefill is prepended back to the returned text. After the JSON the model emits a
+    stray </think> and repeats itself, so generation stops there."""
+    body: dict = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": prompt, "images": [image_b64]},
+            {"role": "assistant", "content": "<think>\n\n</think>\n\n" + prefill},
+        ],
+        "stream": False,
+        "options": {"temperature": 0, "num_predict": num_predict, "stop": ["</think>"]},
+    }
+    if keep_alive is not None:
+        body["keep_alive"] = keep_alive
+    r = httpx.post(f"{base_url}/api/chat", json=body, timeout=timeout)
+    r.raise_for_status()
+    return prefill + r.json().get("message", {}).get("content", "")
+
+
 class OllamaQwenVLAnalyzer:
     """Qwen3-VL through a local Ollama server (``ollama run qwen3-vl:2b``).
 
@@ -200,19 +206,7 @@ class OllamaQwenVLAnalyzer:
     def analyze(self, image: Image.Image, hint_text: str | None = None) -> GarmentAnalysis:
         t0 = time.perf_counter()
         prompt = VLM_PROMPT + (f"\nUser-provided title (may help): {hint_text}" if hint_text else "")
-        r = httpx.post(
-            f"{self.base_url}/api/chat",
-            json={
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt, "images": [_image_b64(image)]}],
-                "format": VLM_SCHEMA,
-                "stream": False,
-                "options": {"temperature": 0},
-            },
-            timeout=self.timeout,
-        )
-        r.raise_for_status()
-        content = r.json().get("message", {}).get("content", "")
+        content = ollama_chat(self.base_url, self.model, prompt, _image_b64(image), '{"category": "', self.timeout)
         data = _parse_json(content)
         attrs, desc = validate_vlm_output(data, f"model:{self.model}")
         return GarmentAnalysis(self.name, time.perf_counter() - t0, attrs, desc, raw=data)
@@ -249,11 +243,9 @@ class Florence2Analyzer:
         self._lock = threading.Lock()
 
     def available(self) -> tuple[bool, str]:
-        try:
-            import torch  # noqa: F401
-            import transformers  # noqa: F401
-        except ImportError:
-            return False, "torch/transformers not installed (pip install '.[vision-models]')"
+        missing = [m for m in ("torch", "transformers") if importlib.util.find_spec(m) is None]
+        if missing:
+            return False, f"{'/'.join(missing)} not installed (pip install '.[vision-models]')"
         return True, f"transformers installed; weights for {self.model_id} load lazily"
 
     def _load(self):

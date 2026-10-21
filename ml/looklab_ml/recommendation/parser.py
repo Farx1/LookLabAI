@@ -19,44 +19,46 @@ from .models import Constraints
 NUMBER_WORDS = {
     "one": 1, "a": 1, "an": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
     "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "fifteen": 15, "twenty": 20,
+    "un": 1, "une": 1, "deux": 2, "trois": 3, "quatre": 4, "cinq": 5, "sept": 7, "huit": 8, "neuf": 9,
+    "dix": 10, "onze": 11, "douze": 12, "quinze": 15, "vingt": 20,
 }  # fmt: skip
 
 OCCASION_KEYWORDS = [
-    (r"\b(anniversary|romantic dinner|date night|date|valentine)", "date"),
-    (r"\bwedding\b", "wedding_guest"),
-    (r"\b(interview)\b", "interview"),
-    (r"\b(office|work|business meeting|meeting)\b", "work"),
-    (r"\b(gala|black tie|formal event|ceremony)\b", "formal"),
-    (r"\b(party|club|night out|cocktail)\b", "party"),
+    (r"\b(anniversary|romantic dinner|date night|date|valentine|anniversaire|d[iî]ner romantique|so[iî]r[ée]e romantique|rendez-vous|saint-valentin)", "date"),
+    (r"\b(wedding|mariage|noces)\b", "wedding_guest"),
+    (r"\b(interview|entretien)\b", "interview"),
+    (r"\b(office|work|business meeting|meeting|bureau|travail|boulot|r[ée]union)\b", "work"),
+    (r"\b(gala|black tie|formal event|ceremony|c[ée]r[ée]monie)\b", "formal"),
+    (r"\b(party|club|night out|cocktail|so[iî]r[ée]e|f[eê]te|bo[iî]te de nuit)\b", "party"),
     (r"\bbrunch\b", "brunch"),
-    (r"\b(travel|trip|flight|airport)\b", "travel"),
-    (r"\b(gym|workout|running|sport)\b", "sport"),
-    (r"\bdinner\b", "dinner"),
-    (r"\b(casual|weekend|everyday|errands)\b", "casual"),
+    (r"\b(travel|trip|flight|airport|voyage|vacances|a[ée]roport)\b", "travel"),
+    (r"\b(gym|workout|running|sport|entra[iî]nement)\b", "sport"),
+    (r"\b(dinner|d[iî]ner)\b", "dinner"),
+    (r"\b(casual|week-?ends?|everyday|errands|quotidien|tous les jours)\b", "casual"),
 ]
 
 STYLE_KEYWORDS = {
     "minimalist": r"minimal(ist)?|clean lines|understated",
-    "romantic": r"romantic|feminine|soft",
-    "elegant": r"elegant|sophisticated|refined|polished|classy",
-    "classic": r"classic|timeless",
-    "casual": r"\bcasual\b|relaxed vibe|laid[- ]back",
-    "sporty": r"sporty|athleisure|athletic",
+    "romantic": r"romantic|romantiqu|feminine|f[ée]minin|soft",
+    "elegant": r"[ée]l[ée]gant|sophisticated|refined|raffin[ée]|polished|classy",
+    "classic": r"classic|classique|timeless|\bsmart\b",
+    "casual": r"\bcasual\b|d[ée]contract[ée]|relaxed vibe|laid[- ]back",
+    "sporty": r"sporty|sportif|sportive|athleisure|athletic",
     "streetwear": r"street ?wear|urban",
-    "bohemian": r"boho|bohemian",
-    "korean": r"korean|k-?fashion|seoul",
+    "bohemian": r"boho|bohemian|boh[eè]me",
+    "korean": r"korean|cor[ée]en|k-?fashion|seoul",
     "preppy": r"preppy",
     "edgy": r"edgy|rock|grunge",
-    "business": r"business|corporate|professional",
-    "vintage": r"vintage|retro",
+    "business": r"business|corporate|professional|professionnel",
+    "vintage": r"vintage|r[ée]tro",
     "chic": r"\bchic\b|parisian|french girl",
 }
 
 SEASON_KEYWORDS = {
-    "spring": r"\bspring\b",
-    "summer": r"\bsummer|hot weather|heatwave\b",
-    "autumn": r"\b(autumn|fall)\b",
-    "winter": r"\bwinter|cold weather|snow\b",
+    "spring": r"\b(spring|printemps)\b",
+    "summer": r"\bsummer|hot weather|heatwave\b|\b[ée]t[ée]\b",
+    "autumn": r"\b(autumn|fall|automne)\b",
+    "winter": r"\bwinter|cold weather|snow\b|\bhiver\b",
 }
 
 CURRENCY_SYMBOLS = {"€": "EUR", "$": "USD", "£": "GBP"}
@@ -84,8 +86,8 @@ SLOT_WORDS = {
 
 
 def _words_to_count(text: str) -> int | None:
-    noun = r"(?:[\w'-]+\s+){0,3}?(?:outfits?|looks?|options?|ideas?|combinations?)\b"
-    if re.search(r"\ba few\s+" + noun, text):
+    noun = r"(?:[\w'-]+\s+){0,3}?(?:outfits?|looks?|options?|ideas?|combinations?|tenues?|ensembles?|id[ée]es?|combinaisons?)\b"
+    if re.search(r"\b(?:a few|quelques)\s+" + noun, text):
         return 3
     if re.search(r"\ba couple(?: of)?\s+" + noun, text):
         return 2
@@ -99,10 +101,12 @@ def _words_to_count(text: str) -> int | None:
 
 
 def _budget(text: str) -> tuple[float, str] | None:
+    kw = r"(?:budget(?: of| de| max(?:imum)?(?: de)?)?|under|below|less than|max(?:imum)?|up to|within|no more than|moins de|jusqu'[àa]|pas plus de)"
     pat = [
-        r"(?:budget(?: of)?|under|below|less than|max(?:imum)?|up to|within|no more than)\s*([€$£])\s?(\d+(?:[.,]\d+)?)",
-        r"(?:budget(?: of)?|under|below|less than|max(?:imum)?|up to|within|no more than)\s*(\d+(?:[.,]\d+)?)\s?([€$£]|eur|euros?|usd|dollars?|gbp|pounds?)",
+        kw + r"\s*([€$£])\s?(\d+(?:[.,]\d+)?)",
+        kw + r"\s*(\d+(?:[.,]\d+)?)\s?([€$£]|eur|euros?|usd|dollars?|gbp|pounds?|livres?)",
         r"([€$£])\s?(\d+(?:[.,]\d+)?)\s*(?:budget|max|or less)",
+        r"(\d+(?:[.,]\d+)?)\s?([€$£]|euros?)\s*(?:de budget|budget|max(?:imum)?)",
     ]
     for p in pat:
         m = re.search(p, text)

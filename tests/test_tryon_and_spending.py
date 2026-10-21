@@ -173,3 +173,78 @@ def test_mock_provider_cancellation():
     req = TryOnRequest("x", "y", "tops", output_path="/tmp/never.png")
     with pytest.raises(CancelledError):
         asyncio.run(MockTryOnProvider(delay_seconds=0.2).generate(req, should_cancel=lambda: True))
+
+
+class RecordingMock(MockTryOnProvider):
+    def __init__(self):
+        super().__init__()
+        self.categories = []
+
+    async def generate(self, request, should_cancel=None):
+        self.categories.append(request.category)
+        return await super().generate(request, should_cancel)
+
+
+def test_multi_garment_layer_order_single_result(settings):
+    rec = RecordingMock()
+    app, client = make_client(settings, {"mock": rec})
+    try:
+        p = upload_person(client)
+        top = upload_garment(client, next(i for i in DEMO_WARDROBE if i.meta.get("category") == "top"))
+        bottom = upload_garment(client, next(i for i in DEMO_WARDROBE if i.meta.get("category") == "bottom"))
+        shoes = upload_garment(client, next(i for i in DEMO_WARDROBE if i.kind == "shoes"))
+        body = {"person_photo_id": p["id"], "provider": "mock"}
+        r = client.post("/api/tryon/jobs", json={**body, "garment_ids": [top["id"], shoes["id"]]})
+        assert r.status_code == 422 and r.json()["detail"]["code"] == "category_unsupported"
+        j = client.post("/api/tryon/jobs", json={**body, "garment_ids": [top["id"], bottom["id"]]}).json()
+        assert drain(app) == 1
+        assert client.get(f"/api/jobs/{j['id']}").json()["status"] == "succeeded"
+        assert rec.categories == ["bottoms", "tops"]
+        res = client.get("/api/tryon/results").json()
+        assert len(res) == 1 and res[0]["garment_ids"] == [bottom["id"], top["id"]]
+    finally:
+        client.__exit__(None, None, None)
+
+
+def test_multi_garment_foreign_id_rejected(tmp_path):
+    from tests.test_privacy_and_isolation import _multi
+
+    app, client = _multi(tmp_path)
+    try:
+        h = {}
+        for who in ("alice", "bob"):
+            r = client.post("/api/auth/register", json={"email": f"{who}@example.com", "password": "correct horse battery"})
+            h[who] = {"Authorization": f"Bearer {r.json()['token']}"}
+        client.cookies.clear()
+        mine = upload_garment(client, DEMO_WARDROBE[0], headers=h["alice"])
+        theirs = upload_garment(client, DEMO_WARDROBE[1], headers=h["bob"])
+        pa = upload_person(client, headers=h["alice"])
+        r = client.post(
+            "/api/tryon/jobs",
+            json={"person_photo_id": pa["id"], "garment_ids": [mine["id"], theirs["id"]], "provider": "mock"},
+            headers=h["alice"],
+        )
+        assert r.status_code == 404
+    finally:
+        client.__exit__(None, None, None)
+
+
+def test_both_garment_fields_rejected_and_explicit_category_kept(client):
+    p, g = setup_pair(client)
+    r = client.post("/api/tryon/jobs", json={"person_photo_id": p["id"], "garment_id": g["id"], "garment_ids": [g["id"]], "provider": "mock"})
+    assert r.status_code == 422
+    shoes = upload_garment(client, next(i for i in DEMO_WARDROBE if i.meta.get("category") == "shoes"))
+    r = client.post("/api/tryon/jobs", json={"person_photo_id": p["id"], "garment_id": shoes["id"], "category": "tops", "provider": "mock"})
+    assert r.status_code == 200  # single garment: the explicit category wins over the unsupported one
+
+
+def test_legacy_job_payload_without_steps(client, app):
+    p, g = setup_pair(client)
+    j = client.post("/api/tryon/jobs", json={"person_photo_id": p["id"], "garment_id": g["id"], "provider": "mock"}).json()
+    with app.state.sessionmaker() as db:
+        job = db.get(Job, j["id"])
+        old = {k: v for k, v in job.payload.items() if k != "steps"}
+        job.payload = {**old, "garment_id": g["id"]}
+        db.commit()
+    drain(app)
+    assert client.get(f"/api/jobs/{j['id']}").json()["status"] == "succeeded"

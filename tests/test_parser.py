@@ -63,3 +63,20 @@ def test_unrelated_text_changes_nothing():
     c = parse_request(SPEC).constraints
     c2 = parse_request("thanks!", c).constraints
     assert c2 == c
+
+
+def test_french_principal_request():
+    c = parse_request("15 tenues pour un dîner d'anniversaire romantique, budget 100 €").constraints
+    assert c.count == 15 and c.budget == 100 and c.currency == "EUR"
+    assert c.occasion in ("dinner", "date") and "romantic" in c.preferred_styles
+
+
+def test_french_variants_and_english_smart_weekend():
+    c = parse_request("quinze looks pour le bureau, style chic, 80 euros max").constraints
+    assert c.count == 15 and c.occasion == "work" and c.budget == 80 and "chic" in c.preferred_styles
+    assert parse_request("un mariage décontracté").constraints.occasion == "wedding_guest"
+    c = parse_request("a smart weekend look").constraints
+    assert c.occasion == "casual" and "classic" in c.preferred_styles
+    c = parse_request("a smart casual look").constraints
+    assert c.occasion == "casual" and "classic" in c.preferred_styles
+    assert parse_request("faire les courses").constraints.occasion != "casual"  # ambiguous word, no longer an occasion

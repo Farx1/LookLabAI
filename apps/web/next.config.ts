@@ -6,6 +6,7 @@ const API_URL = process.env.LOOKLAB_API_URL ?? "http://127.0.0.1:8000";
 
 const config: NextConfig = {
   output: "standalone",
+  allowedDevOrigins: ["127.0.0.1"],
   transpilePackages: ["@looklab/ui", "@looklab/shared-types"],
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];

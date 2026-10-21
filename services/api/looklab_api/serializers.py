@@ -104,6 +104,6 @@ def saved_out(o: SavedOutfit, garments: dict) -> dict:
         "score": o.score,
         "explanation": o.explanation,
         "feedback": o.feedback,
-        "collage_url": "/api/outfits/collage?ids=" + ",".join(i for i in o.garment_ids if i in garments),
+        "collage_url": "/api/outfits/collage?ids=" + ",".join(i for i in o.garment_ids if i in garments) if any(i in garments for i in o.garment_ids) else None,
         "created_at": iso(o.created_at),
     }

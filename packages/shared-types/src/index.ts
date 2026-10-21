@@ -41,6 +41,7 @@ export interface GarmentBrief {
   category: string;
   subcategory: string | null;
   colors: string[];
+  brand: string | null;
   price: number | null;
   currency: string;
   is_owned: boolean;
@@ -88,6 +89,7 @@ export interface ScoreBreakdown {
   request: number;
   pattern: number;
   total: number;
+  trend?: number;
 }
 
 export interface ShoppingSuggestion {
@@ -130,6 +132,8 @@ export interface Constraints {
   locked_garment_ids: string[];
   excluded_garment_ids: string[];
   required_details: string[];
+  trend_id?: string | null;
+  seed?: number | null;
 }
 
 export interface RecommendationResponse {
@@ -140,6 +144,12 @@ export interface RecommendationResponse {
   notes: string[];
   suggestions: ShoppingSuggestion[];
   understood: string[];
+}
+
+export interface SurpriseResponse extends Omit<RecommendationResponse, "understood"> {
+  trend: { id: string; nom: string; description: string; sources: string[] };
+  seed: number;
+  history_reset: boolean;
 }
 
 export interface SavedOutfit {
@@ -153,8 +163,25 @@ export interface SavedOutfit {
   score: Partial<ScoreBreakdown>;
   explanation: string[];
   feedback: "like" | "dislike" | null;
-  collage_url: string;
+  collage_url: string | null;
   created_at: string;
+}
+
+/** Result of an "outfit_analysis" job. bbox is x1,y1,x2,y2 in 0-1000 of the photo. */
+export interface AnalyzedPiece {
+  index: number;
+  name: string;
+  category: string;
+  subcategory: string | null;
+  colors: string[];
+  color_hex: string[];
+  pattern: string;
+  bbox: [number, number, number, number];
+  matches: { score: number; garment: Garment }[];
+}
+export interface OutfitAnalysis {
+  pieces: AnalyzedPiece[];
+  timings: Record<string, number>;
 }
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
